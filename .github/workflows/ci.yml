@@ -1,0 +1,65 @@
+name: Sundial Program
+
+on:
+  push:
+    branches: [master]
+  pull_request:
+    branches: [master]
+
+jobs:
+
+  lint-rust:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v2
+      - name: Install Rust nightly
+        uses: actions-rs/toolchain@v1
+        with:
+          override: true
+          profile: minimal
+          components: rustfmt, clippy
+      - name: Cache dependencies
+        uses: Swatinem/rust-cache@v1
+      - name: Formatting and Linting
+        run: | 
+          cargo fmt -- --check
+          cargo check
+  lint-ts:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v2
+      - uses: actions/setup-node@v2
+        with:
+          node-version: '16'
+      - name: Lint typescript
+        run: |
+          yarn install
+          yarn lint:ci
+  tests:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v2
+      - uses: actions/setup-node@v2
+        with:
+          node-version: '16'
+      - run: yarn install
+      - run: yarn add -g @project-serum/anchor mocha
+      - name: Install Solana CLI
+        run: |
+          sh -c "$(curl -sSfL https://release.solana.com/v1.7.8/install)"
+          echo "PATH=$HOME/.local/share/solana/install/active_release/bin:$PATH" >> $GITHUB_ENV
+      - name: Install Rust nightly
+        uses: actions-rs/toolchain@v1
+        with:
+          components: rustfmt, clippy
+      - name: Cache dependencies
+        uses: Swatinem/rust-cache@v1
+      - name: Generate keypair
+        run: solana-keygen new --no-bip39-passphrase
+      - name: Install Anchor
+        run: |
+          sudo apt-get update && sudo apt-get install -y pkg-config build-essential libudev-dev
+          cargo install --git https://github.com/project-serum/anchor --tag v0.18.0 anchor-cli --locked
+      - name: Build Self
+        run: anchor build
+      - run: yarn test:e2e
