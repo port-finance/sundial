@@ -1,5 +1,5 @@
 [programs.localnet]
-sundial = "Fg6PaFpoGXkYsidMpWTK6W2BeZ7FEfcYkg476zPFsLnS"
+sundial = "SDLxV7m1qmoqkytqYRGY1x438AbYCqekPsPxK4kvwuk"
 
 [registry]
 url = "https://anchor.projectserum.com"
@@ -7,6 +7,10 @@ url = "https://anchor.projectserum.com"
 [provider]
 cluster = "localnet"
 wallet = "~/.config/solana/id.json"
+
+[[test.genesis]]
+address = "Port7uDYB3wk6GJAw4KT1WpTeMtSu9bTcChBHkX2LfR"
+program = "./deps/port_finance_variable_rate_lending.so"
 
 [scripts]
 test = "ts-mocha -p ./tsconfig.json -t 1000000 tests/**/*.ts"
