@@ -1,11 +1,15 @@
+use crate::error::SundialError;
 use anchor_lang::prelude::*;
 use std::mem::size_of;
+
+pub mod error;
 
 declare_id!("SDLxV7m1qmoqkytqYRGY1x438AbYCqekPsPxK4kvwuk");
 
 #[program]
 pub mod sundial {
     use super::*;
+
     pub fn initialize(
         ctx: Context<Initialize>,
         authority_bump: u8,
@@ -45,7 +49,8 @@ pub mod sundial {
 #[derive(Accounts, Clone)]
 #[instruction(authority_bump: u8, end_unix_time_stamp: u64)]
 pub struct Initialize<'info> {
-    #[account(init, payer = user, space = size_of::< Sundial > () + 8,)]
+    #[account(init, payer = user, space = size_of::< Sundial > () + 8,
+      constraint = end_unix_time_stamp > (clock.unix_timestamp as u64) @ SundialError::EndTimeTooEarly)]
     pub sundial: AccountLoader<'info, Sundial>,
     #[account(mut)]
     pub user: Signer<'info>,
