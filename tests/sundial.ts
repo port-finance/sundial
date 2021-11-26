@@ -4,9 +4,10 @@ import {Sundial, IDL} from '../target/types/sundial';
 import {Keypair, PublicKey, SystemProgram, SYSVAR_RENT_PUBKEY, SYSVAR_CLOCK_PUBKEY, Transaction} from '@solana/web3.js';
 import { ASSOCIATED_TOKEN_PROGRAM_ID, Token, TOKEN_PROGRAM_ID, u64 } from '@solana/spl-token';
 import {initLendingMarketInstruction, initReserveInstruction} from '@port.finance/port-sdk'
-import { LENDING_MARKET_LEN, PORT_LENDING, RESERVE_LEN, TOKEN_ACCOUNT_LEN, TOKEN_MINT_LEN } from './constants';
+import { DEFAULT_RESERVE_CONFIG, LENDING_MARKET_LEN, PORT_LENDING, RESERVE_LEN, TOKEN_ACCOUNT_LEN, TOKEN_MINT_LEN } from './constants';
 import { ReserveConfig } from '@port.finance/port-sdk/lib/structs/ReserveData';
 import { getTokenAccount } from '@project-serum/common';
+import {assert} from 'chai';
 
 describe('sundial', () => {
 
@@ -61,28 +62,13 @@ describe('sundial', () => {
 
     provider.send(tx);
 
-    reserveState = await createDefaultReserve(provider, 1, assocTokenAccount, lendingMarket.publicKey, {
-      optimalUtilizationRate: 80,
-      loanToValueRatio: 80,
-      liquidationBonus: 5,
-      liquidationThreshold: 85,
-      minBorrowRate: 0,
-      optimalBorrowRate: 40,
-      maxBorrowRate: 90,
-      fees: {
-        borrowFeeWad: new BN(10000000000000),
-        flashLoanFeeWad: new BN(30000000000000),
-        hostFeePercentage: 0
-      },
-      stakingPoolOption: 0,
-      stakingPool: TOKEN_PROGRAM_ID // dummy      
-    })
+    reserveState = await createDefaultReserve(
+      provider, 1, assocTokenAccount, lendingMarket.publicKey, DEFAULT_RESERVE_CONFIG);
   })
 
-  // TODO: prepare the lending market and reserve
-  it('Sundial is initialized!', async () => {
+  const sundialAcc = Keypair.generate();
+  it('Initialize Sundial!', async () => {
 
-    const sundialAcc = Keypair.generate()
     const principleTokenMint = Keypair.generate();
     const yieldTokenMint = Keypair.generate();
     const liquidityTokenSupply = Keypair.generate();
@@ -127,6 +113,114 @@ describe('sundial', () => {
         ]
       }
     );
+  });
+
+  it('Mints principle and yield tokens', async () => {
+
+    const sundialPool = await sundial.account.sundial.fetch(
+      sundialAcc.publicKey
+    );
+
+    const [sundialAuthority] = await PublicKey.findProgramAddress(
+      [],
+      sundial.programId
+    );
+
+    const createPrincipleAndYieldTokenWalletsTx = new Transaction();
+
+    const principleAssocTokenAccount = await Token.getAssociatedTokenAddress(
+      ASSOCIATED_TOKEN_PROGRAM_ID,
+      TOKEN_PROGRAM_ID,
+      sundialPool.principleTokenMint,
+      provider.wallet.publicKey
+    );
+
+    const yieldAssocTokenAccount = await Token.getAssociatedTokenAddress(
+      ASSOCIATED_TOKEN_PROGRAM_ID,
+      TOKEN_PROGRAM_ID,
+      sundialPool.yieldTokenMint,
+      provider.wallet.publicKey
+    );
+
+    createPrincipleAndYieldTokenWalletsTx.add(
+      Token.createAssociatedTokenAccountInstruction(
+        ASSOCIATED_TOKEN_PROGRAM_ID,
+        TOKEN_PROGRAM_ID,
+        sundialPool.principleTokenMint,
+        principleAssocTokenAccount,
+        provider.wallet.publicKey,
+        provider.wallet.publicKey,
+      ),
+      Token.createAssociatedTokenAccountInstruction(
+        ASSOCIATED_TOKEN_PROGRAM_ID,
+        TOKEN_PROGRAM_ID,
+        sundialPool.yieldTokenMint,
+        yieldAssocTokenAccount,
+        provider.wallet.publicKey,
+        provider.wallet.publicKey,
+      ),
+    );
+
+    await provider.send(
+      createPrincipleAndYieldTokenWalletsTx
+    );
+
+    const assocTokenAccount = await Token.getAssociatedTokenAddress(
+      ASSOCIATED_TOKEN_PROGRAM_ID,
+      TOKEN_PROGRAM_ID,
+      liquidityTokenMint.publicKey,
+      provider.wallet.publicKey
+    );
+
+    const amount = new BN(100000000);
+    const mintTestTokensTx = new Transaction();
+    mintTestTokensTx.add(
+      Token.createMintToInstruction(
+        TOKEN_PROGRAM_ID,
+        liquidityTokenMint.publicKey,
+        assocTokenAccount,
+        provider.wallet.publicKey,
+        [],
+        new u64(amount.toString())
+      ),
+    );
+
+    await provider.send(mintTestTokensTx);
+
+    const [lendingMarketAuthority] = await PublicKey.findProgramAddress(
+      [lendingMarket.publicKey.toBuffer()],
+      PORT_LENDING
+    );
+    
+    await sundial.rpc.mintPrincipleTokensAndYieldTokens(
+      amount,
+      {
+        accounts: {
+          sundial: sundialAcc.publicKey,
+          sundialAuthority: sundialAuthority,
+          userSourceLiquidity: assocTokenAccount,
+          principleTokenDestination: principleAssocTokenAccount,
+          yieldTokenDestination: yieldAssocTokenAccount,
+          userTransferAuthority: provider.wallet.publicKey,
+          principleTokenMint: sundialPool.principleTokenMint,
+          yieldTokenMint: sundialPool.yieldTokenMint,
+          lendingMarket: lendingMarket.publicKey,
+          lendingMarketAuthority: lendingMarketAuthority,
+          portLendingProgram: PORT_LENDING,
+          tokenProgram: TOKEN_PROGRAM_ID,
+          clock: SYSVAR_CLOCK_PUBKEY,
+          portLiquiditySupply: sundialPool.liquiditySupplyTokenAccount,
+          portCollateralSupply: sundialPool.collateralSupplyTokenAccount,
+        },
+        signers: []
+      }
+    )
+
+    const principleWallet = await getTokenAccount(provider, principleAssocTokenAccount);
+    const yieldWallet = await getTokenAccount(provider, yieldAssocTokenAccount);
+
+    assert(principleWallet.amount.toString() === amount.toString(), "Didn't receive expected amount of principle tokens");
+    assert(yieldWallet.amount.toString() === amount.toString(), "Didn't receive expected amount of yield tokens");
   });
 });
 
