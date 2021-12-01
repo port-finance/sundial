@@ -3,11 +3,12 @@ import { Program } from '@project-serum/anchor';
 import {Sundial, IDL} from '../target/types/sundial';
 import {Keypair, PublicKey, SystemProgram, SYSVAR_RENT_PUBKEY, SYSVAR_CLOCK_PUBKEY, Transaction} from '@solana/web3.js';
 import { ASSOCIATED_TOKEN_PROGRAM_ID, Token, TOKEN_PROGRAM_ID, u64 } from '@solana/spl-token';
-import {initLendingMarketInstruction, initReserveInstruction} from '@port.finance/port-sdk'
+import {initLendingMarketInstruction, initReserveInstruction, refreshReserveInstruction} from '@port.finance/port-sdk'
 import { DEFAULT_RESERVE_CONFIG, LENDING_MARKET_LEN, PORT_LENDING, RESERVE_LEN, TOKEN_ACCOUNT_LEN, TOKEN_MINT_LEN } from './constants';
 import { ReserveConfig } from '@port.finance/port-sdk/lib/structs/ReserveData';
 import { getTokenAccount } from '@project-serum/common';
 import {assert} from 'chai';
+
 
 describe('sundial', () => {
 
@@ -66,63 +67,99 @@ describe('sundial', () => {
       provider, 1, assocTokenAccount, lendingMarket.publicKey, DEFAULT_RESERVE_CONFIG);
   })
 
-  const sundialAcc = Keypair.generate();
+  const poolName = "USDC";
+  const strToUint8 = (str: string) => {
+    return Uint8Array.from(str.split("").map(c => c.charCodeAt(0)))
+  }
   it('Initialize Sundial!', async () => {
-
-    const principleTokenMint = Keypair.generate();
-    const yieldTokenMint = Keypair.generate();
-    const liquidityTokenSupply = Keypair.generate();
-    const collateralTokenSupply = Keypair.generate();
-    const redeemFeeReceiver = Keypair.generate();
-    const owner = Keypair.generate();
-    const [sundialAuthority, nounce] = await PublicKey.findProgramAddress(
+    const [sundialAcc, sundialBump] = await PublicKey.findProgramAddress(
+      [strToUint8(poolName)],
+      sundial.programId
+    );
+    const [principleTokenMint, principleBump] = await PublicKey.findProgramAddress(
+      [sundialAcc.toBuffer(), strToUint8("principle_mint") ],
+      sundial.programId
+    );
+    const [yieldTokenMint, yieldBump] = await PublicKey.findProgramAddress(
+      [sundialAcc.toBuffer(), strToUint8("yield_mint")],
+      sundial.programId
+    );
+    const [liquidityTokenSupply, liquidityBump] = await PublicKey.findProgramAddress(
+      [sundialAcc.toBuffer(), strToUint8("liquidity")],
+      sundial.programId
+    );
+    const [lpTokenSupply, lpBump] = await PublicKey.findProgramAddress(
+      [sundialAcc.toBuffer(), strToUint8("lp")],
+      sundial.programId
+    );
+    const [redeemFeeReceiver, feeReceiverBump] = await PublicKey.findProgramAddress(
+      [sundialAcc.toBuffer(), strToUint8("fee_receiver")],
+      sundial.programId
+    );
+    const [sundialAuthority, authorityBump] = await PublicKey.findProgramAddress(
       [],
       sundial.programId
     );
 
     await sundial.rpc.initialize(
-      nounce,
+      {
+        sundialBump: sundialBump,
+        authorityBump: authorityBump,
+        portLiquidityBump: liquidityBump,
+        portLpBump: lpBump,
+        principleMintBump: principleBump,
+        yieldMintBump: yieldBump,
+        feeReceiverBump: feeReceiverBump
+      },
+      poolName,
       new BN(1849276800), // 8th of August 2028
+      PORT_LENDING,
       {
         accounts: {
-          sundial: sundialAcc.publicKey,
+          sundial: sundialAcc,
           sundialAuthority: sundialAuthority,
-          portLiquiditySupply: liquidityTokenSupply.publicKey,
-          portCollateralSupply: collateralTokenSupply.publicKey,
-          principleTokenMint: principleTokenMint.publicKey,
-          yieldTokenMint: yieldTokenMint.publicKey,
+          sundialPortLiquidityWallet: liquidityTokenSupply,
+          sundialPortLpWallet: lpTokenSupply,
+          principleTokenMint: principleTokenMint,
+          yieldTokenMint: yieldTokenMint,
           portLiquidityMint: liquidityTokenMint.publicKey,
-          portCollateralMint: reserveState.collateralMintAccount,
-          redeemFeeReceiver: redeemFeeReceiver.publicKey,
-          reservePubkey: reserveState.address,
+          portLpMint: reserveState.collateralMintAccount,
+          feeReceiverWallet: redeemFeeReceiver,
+          reserve: reserveState.address,
           tokenProgram: TOKEN_PROGRAM_ID,
           systemProgram: SystemProgram.programId,
           rent: SYSVAR_RENT_PUBKEY,
           user: provider.wallet.publicKey,
-          owner: owner.publicKey,
           clock: SYSVAR_CLOCK_PUBKEY,
         },
-        instructions: [],
-        signers: [
-          sundialAcc, 
-          principleTokenMint, 
-          yieldTokenMint, 
-          liquidityTokenSupply, 
-          collateralTokenSupply, 
-          redeemFeeReceiver
-        ]
+        signers: []
       }
     );
   });
 
   it('Mints principle and yield tokens', async () => {
-
-    const sundialPool = await sundial.account.sundial.fetch(
-      sundialAcc.publicKey
+    const [sundialAcc] = await PublicKey.findProgramAddress(
+      [strToUint8(poolName)],
+      sundial.programId
     );
+
 
     const [sundialAuthority] = await PublicKey.findProgramAddress(
       [],
+      sundial.programId
+    );
+
+    const [principleTokenMint] = await PublicKey.findProgramAddress(
+      [sundialAcc.toBuffer(), strToUint8("principle_mint") ],
+      sundial.programId
+    );
+    const [yieldTokenMint] = await PublicKey.findProgramAddress(
+      [sundialAcc.toBuffer(), strToUint8("yield_mint")],
+      sundial.programId
+    );
+
+    const [lpTokenSupply] = await PublicKey.findProgramAddress(
+      [sundialAcc.toBuffer(), strToUint8("lp")],
       sundial.programId
     );
 
@@ -131,14 +168,14 @@ describe('sundial', () => {
     const principleAssocTokenAccount = await Token.getAssociatedTokenAddress(
       ASSOCIATED_TOKEN_PROGRAM_ID,
       TOKEN_PROGRAM_ID,
-      sundialPool.principleTokenMint,
+      principleTokenMint,
       provider.wallet.publicKey
     );
 
     const yieldAssocTokenAccount = await Token.getAssociatedTokenAddress(
       ASSOCIATED_TOKEN_PROGRAM_ID,
       TOKEN_PROGRAM_ID,
-      sundialPool.yieldTokenMint,
+      yieldTokenMint,
       provider.wallet.publicKey
     );
 
@@ -146,7 +183,7 @@ describe('sundial', () => {
       Token.createAssociatedTokenAccountInstruction(
         ASSOCIATED_TOKEN_PROGRAM_ID,
         TOKEN_PROGRAM_ID,
-        sundialPool.principleTokenMint,
+        principleTokenMint,
         principleAssocTokenAccount,
         provider.wallet.publicKey,
         provider.wallet.publicKey,
@@ -154,7 +191,7 @@ describe('sundial', () => {
       Token.createAssociatedTokenAccountInstruction(
         ASSOCIATED_TOKEN_PROGRAM_ID,
         TOKEN_PROGRAM_ID,
-        sundialPool.yieldTokenMint,
+        yieldTokenMint,
         yieldAssocTokenAccount,
         provider.wallet.publicKey,
         provider.wallet.publicKey,
@@ -191,31 +228,47 @@ describe('sundial', () => {
       [lendingMarket.publicKey.toBuffer()],
       PORT_LENDING
     );
-    
-    await sundial.rpc.mintPrincipleTokensAndYieldTokens(
+
+    const depositIx = sundial.instruction.mintPrincipleTokensAndYieldTokens(
       amount,
       {
         accounts: {
-          sundial: sundialAcc.publicKey,
+          sundial: sundialAcc,
           sundialAuthority: sundialAuthority,
-          userSourceLiquidity: assocTokenAccount,
-          principleTokenDestination: principleAssocTokenAccount,
-          yieldTokenDestination: yieldAssocTokenAccount,
-          userTransferAuthority: provider.wallet.publicKey,
-          principleTokenMint: sundialPool.principleTokenMint,
-          yieldTokenMint: sundialPool.yieldTokenMint,
-          lendingMarket: lendingMarket.publicKey,
-          lendingMarketAuthority: lendingMarketAuthority,
-          portLendingProgram: PORT_LENDING,
+          sundialPortLpWallet: lpTokenSupply,
+
+          principleTokenMint: principleTokenMint,
+          yieldTokenMint: yieldTokenMint,
+
+          userLiquidityWallet: assocTokenAccount,
+          userPrincipleTokenWallet: principleAssocTokenAccount,
+          userYieldTokenWallet: yieldAssocTokenAccount,
+          userAuthority: provider.wallet.publicKey,
+          portAccounts: {
+            lendingMarket: lendingMarket.publicKey,
+            lendingMarketAuthority: lendingMarketAuthority,
+            reserve: reserveState.address,
+            reserveCollateralMint: reserveState.collateralMintAccount,
+            reserveLiquidityWallet: reserveState.liquiditySupplyPubkey,
+            portLendingProgram: PORT_LENDING,
+          },
           tokenProgram: TOKEN_PROGRAM_ID,
           clock: SYSVAR_CLOCK_PUBKEY,
-          portLiquiditySupply: sundialPool.liquiditySupplyTokenAccount,
-          portCollateralSupply: sundialPool.collateralSupplyTokenAccount,
         },
         signers: []
       }
-    )
+    );
 
+    const refreshReserveIx = refreshReserveInstruction(
+      reserveState.address,
+      null
+    );
+    const depositTx = new Transaction();
+    depositTx.add(
+      refreshReserveIx,
+      depositIx
+    );
+    await provider.send(depositTx);
     const principleWallet = await getTokenAccount(provider, principleAssocTokenAccount);
     const yieldWallet = await getTokenAccount(provider, yieldAssocTokenAccount);
 

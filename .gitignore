@@ -6,3 +6,4 @@ target
 node_modules
 .eslintcache
 yarn-error.log
+.idea

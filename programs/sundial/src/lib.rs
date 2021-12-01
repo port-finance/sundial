@@ -1,178 +1,163 @@
-use crate::error::SundialError;
+use crate::instructions::*;
+use crate::state::SundialBumps;
 use anchor_lang::prelude::*;
-use std::mem::size_of;
-
 pub mod error;
+pub mod event;
+pub mod helpers;
+pub mod instructions;
+pub mod state;
 
 declare_id!("SDLxV7m1qmoqkytqYRGY1x438AbYCqekPsPxK4kvwuk");
 
 #[program]
 pub mod sundial {
     use super::*;
-    use anchor_spl::token;
+    use crate::helpers::{create_mint_to_cpi, create_transfer_cpi};
+    use anchor_spl::token::{burn, mint_to, transfer, Burn};
+    use port_anchor_adaptor::port_accessor::exchange_rate;
+    use port_anchor_adaptor::{deposit_reserve, redeem};
+    use solana_maths::{Decimal, TryDiv, TryMul};
 
     pub fn initialize(
-        ctx: Context<Initialize>,
-        authority_bump: u8,
+        ctx: Context<InitializeSundial>,
+        bumps: SundialBumps,
+        _name: String,
         end_unix_time_stamp: u64,
+        port_lending_program: Pubkey,
     ) -> ProgramResult {
-        let sundial = &mut ctx.accounts.sundial.load_init()?;
-        sundial.authority_bump = authority_bump;
-        sundial.end_unix_time_stamp = end_unix_time_stamp;
-        sundial.principle_token_total_supply = 0;
-        sundial.yield_token_total_supply = 0;
-        sundial.total_liquidity_deposited = 0;
-        sundial.principle_token_mint = ctx.accounts.principle_token_mint.key();
-        sundial.yield_token_mint = ctx.accounts.yield_token_mint.key();
-        sundial.liquidity_supply_token_account = ctx.accounts.port_liquidity_supply.key();
-        sundial.collateral_supply_token_account = ctx.accounts.port_collateral_supply.key();
-        sundial.redeem_fee_receiver = ctx.accounts.redeem_fee_receiver.key();
-        sundial.reserve_pubkey = ctx.accounts.reserve_pubkey.key();
+        let sundial = &mut ctx.accounts.sundial;
+        sundial.bumps = bumps;
         sundial.token_program = ctx.accounts.token_program.key();
+        sundial.reserve = ctx.accounts.reserve.key();
+        sundial.end_unix_time_stamp = end_unix_time_stamp;
+        sundial.port_lending_program = port_lending_program;
         Ok(())
     }
 
     pub fn mint_principle_tokens_and_yield_tokens(
-        ctx: Context<MintPrincipleTokenAndYieldToken>,
+        ctx: Context<DepositAndMintTokens>,
         amount: u64,
     ) -> ProgramResult {
-        let sundial = &mut ctx.accounts.sundial.load_mut()?;
-        let bump_seed = [sundial.authority_bump];
-        let seed = [bump_seed.as_ref()];
-        let seeds = [seed.as_ref()];
-        let transfer_ctx = CpiContext::new_with_signer(
-            ctx.accounts.token_program.clone(),
-            token::Transfer {
-                from: ctx.accounts.user_source_liquidity.clone(),
-                to: ctx.accounts.port_liquidity_supply.clone(),
-                authority: ctx.accounts.user_transfer_authority.to_account_info(),
-            },
-            &seeds,
-        );
-        token::transfer(transfer_ctx, amount)?;
+        let sundial = &ctx.accounts.sundial;
+        let principle_supply_amount = ctx.accounts.principle_token_mint.supply;
+        let lp_amount = ctx.accounts.sundial_port_lp_wallet.amount;
+        let port_exchange_rate = exchange_rate(&ctx.accounts.port_accounts.reserve)?;
 
-        let mint_principle_token_ctx = CpiContext::new_with_signer(
-            ctx.accounts.token_program.clone(),
-            token::MintTo {
-                mint: ctx.accounts.principle_token_mint.clone(),
-                authority: ctx.accounts.sundial_authority.clone(),
-                to: ctx.accounts.principle_token_destination.clone(),
-            },
-            &seeds,
-        );
+        let lp_equivalent_principle = port_exchange_rate.collateral_to_liquidity(lp_amount)?;
+        let principle_mint_amount = if lp_amount == 0 {
+            amount
+        } else {
+            Decimal::from(principle_supply_amount)
+                .try_div(lp_equivalent_principle)?
+                .try_mul(amount)?
+                .try_floor_u64()?
+        };
 
-        let mint_yield_token_ctx = CpiContext::new_with_signer(
-            ctx.accounts.token_program.clone(),
-            token::MintTo {
-                mint: ctx.accounts.yield_token_mint.clone(),
-                authority: ctx.accounts.sundial_authority.clone(),
-                to: ctx.accounts.yield_token_destination.clone(),
-            },
-            &seeds,
-        );
+        deposit_reserve(
+            ctx.accounts.port_accounts.create_deposit_reserve_context(
+                ctx.accounts.user_liquidity_wallet.clone(),
+                ctx.accounts.sundial_port_lp_wallet.to_account_info(),
+                ctx.accounts.user_authority.to_account_info(),
+                ctx.accounts.clock.to_account_info(),
+                ctx.accounts.token_program.clone(),
+                &[&[&[]]],
+            ),
+            amount,
+        )?;
 
-        // TODO: calculate the correct amounts of principle tokens and yield tokens
+        mint_to(
+            create_mint_to_cpi(
+                ctx.accounts.principle_token_mint.to_account_info(),
+                ctx.accounts.user_principle_token_wallet.clone(),
+                ctx.accounts.sundial_authority.clone(),
+                &[&[&[sundial.bumps.authority_bump]]],
+                ctx.accounts.token_program.clone(),
+            ),
+            principle_mint_amount,
+        )?;
 
-        token::mint_to(mint_principle_token_ctx, amount)?;
-
-        token::mint_to(mint_yield_token_ctx, amount)?;
-
-        Ok(())
+        mint_to(
+            create_mint_to_cpi(
+                ctx.accounts.yield_token_mint.to_account_info(),
+                ctx.accounts.user_yield_token_wallet.clone(),
+                ctx.accounts.sundial_authority.clone(),
+                &[&[&[sundial.bumps.authority_bump]]],
+                ctx.accounts.token_program.clone(),
+            ),
+            amount,
+        )
     }
 
-    pub fn redeem_principle_tokens(_ctx: Context<RedeemPrincipleToken>) -> ProgramResult {
-        Ok(())
+    pub fn redeem_principle_tokens(
+        ctx: Context<RedeemPrincipleToken>,
+        amount: u64,
+    ) -> ProgramResult {
+        burn(
+            CpiContext::new(
+                ctx.accounts.token_program.clone(),
+                Burn {
+                    mint: ctx.accounts.principle_token_mint.clone(),
+                    to: ctx.accounts.user_principle_token_wallet.clone(),
+                    authority: ctx.accounts.user_authority.to_account_info(),
+                },
+            ),
+            amount,
+        )?;
+        transfer(
+            create_transfer_cpi(
+                ctx.accounts.sundial_port_liquidity_wallet.clone(),
+                ctx.accounts.user_liquidity_wallet.clone(),
+                ctx.accounts.sundial_authority.clone(),
+                &[&[&[ctx.accounts.sundial.bumps.authority_bump]]],
+                ctx.accounts.token_program.clone(),
+            ),
+            amount,
+        )
     }
 
-    pub fn redeem_yield_tokens(_ctx: Context<RedeemYieldToken>) -> ProgramResult {
-        Ok(())
+    pub fn redeem_yield_tokens(ctx: Context<RedeemYieldToken>, amount: u64) -> ProgramResult {
+        let principle_supply_amount = ctx.accounts.principle_token_mint.supply;
+        let liquidity_of_yield =
+            ctx.accounts.sundial_port_liquidity_wallet.amount - principle_supply_amount;
+        let yield_supply_amount = ctx.accounts.yield_token_mint.supply;
+        let amount_to_redeem = Decimal::from(liquidity_of_yield)
+            .try_div(yield_supply_amount)?
+            .try_mul(amount)?
+            .try_floor_u64()?;
+        burn(
+            CpiContext::new(
+                ctx.accounts.token_program.clone(),
+                Burn {
+                    mint: ctx.accounts.yield_token_mint.to_account_info(),
+                    to: ctx.accounts.user_yield_token_wallet.clone(),
+                    authority: ctx.accounts.user_authority.to_account_info(),
+                },
+            ),
+            amount,
+        )?;
+        transfer(
+            create_transfer_cpi(
+                ctx.accounts.sundial_port_liquidity_wallet.to_account_info(),
+                ctx.accounts.user_liquidity_wallet.clone(),
+                ctx.accounts.sundial_authority.clone(),
+                &[&[&[ctx.accounts.sundial.bumps.authority_bump]]],
+                ctx.accounts.token_program.clone(),
+            ),
+            amount_to_redeem,
+        )
+    }
+
+    pub fn redeem_lp(ctx: Context<RedeemLp>) -> ProgramResult {
+        redeem(
+            ctx.accounts.port_accounts.create_redeem_context(
+                ctx.accounts.sundial_port_liquidity_wallet.clone(),
+                ctx.accounts.sundial_port_lp_wallet.to_account_info(),
+                ctx.accounts.sundial_authority.clone(),
+                ctx.accounts.clock.to_account_info(),
+                ctx.accounts.token_program.clone(),
+                &[&[&[ctx.accounts.sundial.bumps.authority_bump]]],
+            ),
+            ctx.accounts.sundial_port_lp_wallet.amount,
+        )
     }
 }
-
-#[derive(Accounts, Clone)]
-#[instruction(authority_bump: u8, end_unix_time_stamp: u64)]
-pub struct Initialize<'info> {
-    #[account(init, payer = user, space = size_of::< Sundial > () + 8,
-      constraint = end_unix_time_stamp > (clock.unix_timestamp as u64) @ SundialError::EndTimeTooEarly)]
-    pub sundial: AccountLoader<'info, Sundial>,
-    #[account(mut)]
-    pub user: Signer<'info>,
-    pub owner: AccountInfo<'info>,
-    #[account(seeds=[], bump=authority_bump)]
-    pub sundial_authority: AccountInfo<'info>,
-    #[account(owner=token_program.key())]
-    pub port_liquidity_mint: AccountInfo<'info>,
-    #[account(owner=token_program.key())]
-    pub port_collateral_mint: AccountInfo<'info>,
-    #[account(init, payer=user, token::authority=sundial_authority, token::mint=port_liquidity_mint)]
-    pub port_liquidity_supply: AccountInfo<'info>,
-    #[account(init, payer=user, token::authority=sundial_authority, token::mint=port_collateral_mint)]
-    pub port_collateral_supply: AccountInfo<'info>,
-    #[account(init, payer=user, mint::authority=sundial_authority, mint::decimals=6)]
-    pub principle_token_mint: AccountInfo<'info>,
-    #[account(init, payer=user, mint::authority=sundial_authority, mint::decimals=6)]
-    pub yield_token_mint: AccountInfo<'info>,
-    #[account(init, payer=user, token::authority=sundial_authority, token::mint=port_liquidity_mint)]
-    pub redeem_fee_receiver: AccountInfo<'info>,
-    pub reserve_pubkey: AccountInfo<'info>,
-    #[account(executable)]
-    pub token_program: AccountInfo<'info>,
-    #[account(executable)]
-    pub system_program: Program<'info, System>,
-    pub rent: Sysvar<'info, Rent>,
-    pub clock: Sysvar<'info, Clock>,
-}
-
-#[account(zero_copy)]
-#[derive(Debug, PartialEq)]
-pub struct Sundial {
-    pub authority_bump: u8,
-    pub end_unix_time_stamp: u64,
-    pub principle_token_total_supply: u64,
-    pub yield_token_total_supply: u64,
-    pub total_liquidity_deposited: u64,
-    pub principle_token_mint: Pubkey,
-    pub yield_token_mint: Pubkey,
-    pub liquidity_supply_token_account: Pubkey,
-    pub collateral_supply_token_account: Pubkey,
-    pub redeem_fee_receiver: Pubkey,
-    pub reserve_pubkey: Pubkey,
-    pub token_program: Pubkey,
-}
-
-#[derive(Accounts)]
-#[instruction(amount: u64)]
-pub struct MintPrincipleTokenAndYieldToken<'info> {
-    #[account(mut)]
-    pub sundial: AccountLoader<'info, Sundial>,
-    #[account(seeds=[], bump=sundial.load() ?.authority_bump)]
-    pub sundial_authority: AccountInfo<'info>,
-    #[account(mut)] // TODO: check that the destination token account mint matches.
-    pub user_source_liquidity: AccountInfo<'info>,
-    #[account(mut)] // TODO: check that the destination token account mint matches.
-    pub principle_token_destination: AccountInfo<'info>,
-    #[account(mut)] // TODO: check that the destination token account mint matches.
-    pub yield_token_destination: AccountInfo<'info>,
-    pub user_transfer_authority: Signer<'info>,
-    #[account(mut)]
-    pub principle_token_mint: AccountInfo<'info>,
-    #[account(mut)]
-    pub yield_token_mint: AccountInfo<'info>,
-    #[account(mut)]
-    pub port_liquidity_supply: AccountInfo<'info>,
-    #[account(mut)]
-    pub port_collateral_supply: AccountInfo<'info>,
-    pub lending_market: AccountInfo<'info>,
-    pub lending_market_authority: AccountInfo<'info>,
-    #[account(executable)]
-    pub port_lending_program: AccountInfo<'info>,
-    #[account(executable)]
-    pub token_program: AccountInfo<'info>,
-    pub clock: Sysvar<'info, Clock>,
-}
-
-#[derive(Accounts)]
-pub struct RedeemPrincipleToken {}
-
-#[derive(Accounts)]
-pub struct RedeemYieldToken {}
