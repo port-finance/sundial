@@ -5,8 +5,8 @@
     "license": "AGPL-3.0",
     "scripts": {
         "test:e2e": "ANCHOR_WALLET=~/.config/solana/id.json anchor test --skip-build 'tests/*.ts'",
-        "lint": "eslint tests --cache",
-        "lint:ci": "eslint tests --max-warnings=0"
+        "lint": "eslint tests --cache && eslint src --cache",
+        "lint:ci": "eslint tests --max-warnings=0 && eslint src --max-warnings=0"
     },
     "dependencies": {
         "@port.finance/port-sdk": "^0.1.41",
