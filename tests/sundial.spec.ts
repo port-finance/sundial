@@ -1,6 +1,4 @@
-import { Provider, setProvider, workspace, BN } from '@project-serum/anchor';
-import { Program } from '@project-serum/anchor';
-import {Sundial, IDL} from '../target/types/sundial';
+import { Provider, setProvider, BN } from '@project-serum/anchor';
 import {Keypair, PublicKey, Transaction} from '@solana/web3.js';
 import { ASSOCIATED_TOKEN_PROGRAM_ID, Token, TOKEN_PROGRAM_ID } from '@solana/spl-token';
 import { DEFAULT_RESERVE_CONFIG } from './constants';
@@ -19,8 +17,6 @@ describe('sundial', () => {
   setProvider(Provider.local());
   const provider = Provider.local();
 
-  const sundial = new Program<Sundial>(
-    IDL, workspace.Sundial.programId, provider);
   const sdk = makeSDK();
   const sundialSDK = sdk.sundial;
   let lendingMarket: Keypair;
@@ -48,9 +44,6 @@ describe('sundial', () => {
   })
 
   const poolName = "USDC";
-  const strToUint8 = (str: string) => {
-    return Uint8Array.from(str.split("").map(c => c.charCodeAt(0)))
-  }
   it('Initialize Sundial!', async () => {
     const createTx = await sundialSDK.createSundial(
       {
@@ -68,18 +61,12 @@ describe('sundial', () => {
   });
 
   it('Mints principle and yield tokens', async () => {
-    const [sundialAcc] = await PublicKey.findProgramAddress(
-      [strToUint8(poolName)],
-      sundial.programId
-    );
 
-    sundialSDK.setSundial(sundialAcc);
+    sundialSDK.setSundial((await sundialSDK.getSundialAccountAndNounce(poolName))[0]);
     await sundialSDK.reloadSundial();
 
     const principleTokenMint = (await sundialSDK.getPrincipleMintAndNounce())[0];
     const yieldTokenMint = (await sundialSDK.getYieldMintAndNounce())[0];
-
-    const createPrincipleAndYieldTokenWalletsTx = new Transaction();
 
     const principleAssocTokenAccount = await Token.getAssociatedTokenAddress(
       ASSOCIATED_TOKEN_PROGRAM_ID,
@@ -93,29 +80,6 @@ describe('sundial', () => {
       TOKEN_PROGRAM_ID,
       yieldTokenMint,
       provider.wallet.publicKey
-    );
-
-    createPrincipleAndYieldTokenWalletsTx.add(
-      Token.createAssociatedTokenAccountInstruction(
-        ASSOCIATED_TOKEN_PROGRAM_ID,
-        TOKEN_PROGRAM_ID,
-        principleTokenMint,
-        principleAssocTokenAccount,
-        provider.wallet.publicKey,
-        provider.wallet.publicKey,
-      ),
-      Token.createAssociatedTokenAccountInstruction(
-        ASSOCIATED_TOKEN_PROGRAM_ID,
-        TOKEN_PROGRAM_ID,
-        yieldTokenMint,
-        yieldAssocTokenAccount,
-        provider.wallet.publicKey,
-        provider.wallet.publicKey,
-      ),
-    );
-
-    await provider.send(
-      createPrincipleAndYieldTokenWalletsTx
     );
 
     const amount = new BN(100000000);
@@ -138,6 +102,22 @@ describe('sundial', () => {
 
     const depositTx = new Transaction();
     depositTx.add(
+      Token.createAssociatedTokenAccountInstruction(
+        ASSOCIATED_TOKEN_PROGRAM_ID,
+        TOKEN_PROGRAM_ID,
+        principleTokenMint,
+        principleAssocTokenAccount,
+        provider.wallet.publicKey,
+        provider.wallet.publicKey,
+      ),
+      Token.createAssociatedTokenAccountInstruction(
+        ASSOCIATED_TOKEN_PROGRAM_ID,
+        TOKEN_PROGRAM_ID,
+        yieldTokenMint,
+        yieldAssocTokenAccount,
+        provider.wallet.publicKey,
+        provider.wallet.publicKey,
+      ),
       refreshReserveIx,
       ...transactionEnvelope.instructions
     );

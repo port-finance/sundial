@@ -163,6 +163,17 @@
     bn.js "^5.1.2"
     buffer-layout "^1.2.0"
 
+"@saberhq/anchor-contrib@^1.10.4":
+  version "1.10.4"
+  resolved "https://registry.yarnpkg.com/@saberhq/anchor-contrib/-/anchor-contrib-1.10.4.tgz#50eca55e0dad98e15ace264facf6250a50aba2cd"
+  integrity sha512-/79tXiO8kTrOdIopdBpUimgVGF0ii/YsJ9I3cpJCUCoohnqq1EPNX+Xdi17znV7BSBtg/UX9VxSRvlBiGydA+A==
+  dependencies:
+    "@saberhq/solana-contrib" "^1.10.4"
+    eventemitter3 "^4.0.7"
+    lodash.camelcase "^4.3.0"
+    lodash.mapvalues "^4.6.0"
+    tslib "^2.3.1"
+
 "@saberhq/chai-solana@^1.10.4":
   version "1.10.4"
   resolved "https://registry.yarnpkg.com/@saberhq/chai-solana/-/chai-solana-1.10.4.tgz#9da86b6e5a52b162f37501b641d9159969f48662"
@@ -1638,6 +1649,11 @@ locate-path@^6.0.0:
   integrity sha512-iPZK6eYjbxRu3uB4/WZ3EsEIMJFMqAoopl3R+zuq0UjcAm/MO6KCweDgPfP3elTztoKP3KtnVHxTn2NHBSDVUw==
   dependencies:
     p-locate "^5.0.0"
+
+lodash.camelcase@^4.3.0:
+  version "4.3.0"
+  resolved "https://registry.yarnpkg.com/lodash.camelcase/-/lodash.camelcase-4.3.0.tgz#b28aa6288a2b9fc651035c7711f65ab6190331a6"
+  integrity sha1-soqmKIorn8ZRA1x3EfZathkDMaY=
 
 lodash.mapvalues@^4.6.0:
   version "4.6.0"
