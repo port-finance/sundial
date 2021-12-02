@@ -1,6 +1,7 @@
 use crate::instructions::*;
 use crate::state::SundialBumps;
 use anchor_lang::prelude::*;
+
 pub mod error;
 pub mod event;
 pub mod helpers;
@@ -12,12 +13,12 @@ declare_id!("SDLxV7m1qmoqkytqYRGY1x438AbYCqekPsPxK4kvwuk");
 #[program]
 pub mod sundial {
     use super::*;
+    use crate::event::*;
     use crate::helpers::{create_mint_to_cpi, create_transfer_cpi};
     use anchor_spl::token::{burn, mint_to, transfer, Burn};
     use port_anchor_adaptor::port_accessor::exchange_rate;
     use port_anchor_adaptor::{deposit_reserve, redeem};
     use solana_maths::{Decimal, TryDiv, TryMul};
-
     pub fn initialize(
         ctx: Context<InitializeSundial>,
         bumps: SundialBumps,
@@ -85,7 +86,14 @@ pub mod sundial {
                 ctx.accounts.token_program.clone(),
             ),
             amount,
-        )
+        )?;
+
+        emit!(DidDeposit {
+            liquidity_spent: amount,
+            principle_token_minted: principle_mint_amount,
+            yield_token_minted: amount
+        });
+        Ok(())
     }
 
     pub fn redeem_principle_tokens(
@@ -112,7 +120,13 @@ pub mod sundial {
                 ctx.accounts.token_program.clone(),
             ),
             amount,
-        )
+        )?;
+
+        emit!(DidRedeemPrinciple {
+            principle_burned: amount,
+            liquidity_redeemed: amount
+        });
+        Ok(())
     }
 
     pub fn redeem_yield_tokens(ctx: Context<RedeemYieldToken>, amount: u64) -> ProgramResult {
@@ -144,7 +158,12 @@ pub mod sundial {
                 ctx.accounts.token_program.clone(),
             ),
             amount_to_redeem,
-        )
+        )?;
+        emit!(DidRedeemYield {
+            yield_burned: amount,
+            liquidity_redeemed: amount_to_redeem
+        });
+        Ok(())
     }
 
     pub fn redeem_lp(ctx: Context<RedeemLp>) -> ProgramResult {
