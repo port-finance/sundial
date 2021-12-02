@@ -25,11 +25,13 @@ export class SundialWrapper {
   public async createSundial({
     name,
     owner,
+    endTimeStamp,
     liquidityMint,
     reserve
   }: {
     name: string;
     owner: PublicKey;
+    endTimeStamp: BN;
     liquidityMint: PublicKey;
     reserve: ReserveInfo;
   }): Promise<TransactionEnvelope> {
@@ -54,7 +56,7 @@ export class SundialWrapper {
           feeReceiverBump: feeReceiverBump
         },
         name,
-        new BN(1849276800), // 8th of August 2028
+        endTimeStamp, 
         PORT_LENDING,
         {
           accounts: {
@@ -139,7 +141,7 @@ export class SundialWrapper {
 
   public async getFeeReceiverAndNounce(): Promise<[PublicKey, number]> {
     return await PublicKey.findProgramAddress(
-      [this.sundial.toBuffer(), strToUint8(LP_KEY)],
+      [this.sundial.toBuffer(), strToUint8(FEE_RECEIVER_KEY)],
       this.program.programId
     );
   }
