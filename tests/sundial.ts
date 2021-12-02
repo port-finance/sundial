@@ -119,8 +119,8 @@ describe('sundial', () => {
     await sundialSDK.reloadSundial();
 
 
-    const principleTokenMint = await sundialSDK.getPrincipleMint();
-    const yieldTokenMint = await sundialSDK.getYieldMint();
+    const principleTokenMint = (await sundialSDK.getPrincipleMintAndNounce())[0];
+    const yieldTokenMint = (await sundialSDK.getYieldMintAndNounce())[0];
 
     const raw = {
       pubkey: reserveState.address,

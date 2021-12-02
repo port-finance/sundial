@@ -1,4 +1,4 @@
-import { PublicKey, SYSVAR_CLOCK_PUBKEY } from "@solana/web3.js";
+import { PublicKey, SystemProgram, SYSVAR_CLOCK_PUBKEY, SYSVAR_RENT_PUBKEY } from "@solana/web3.js";
 import { TransactionEnvelope } from "@saberhq/solana-contrib";
 import { SundialData, SundialProgram } from "../../programs/sundial";
 import { SundialSDK } from "../../sdk";
@@ -8,6 +8,11 @@ import { ReserveInfo } from "@port.finance/port-sdk";
 import BN from "bn.js";
 
 
+const PRINCIPLE_MINT_KEY = "principle_mint";
+const YIELD_MINT_KEY = "yield_mint";
+const LIQUIDITY_KEY = "liquidity";
+const LP_KEY = "lp";
+const FEE_RECEIVER_KEY = "fee_receiver";
 export class SundialWrapper {
   public readonly program: SundialProgram;
   public sundial?: PublicKey;
@@ -17,9 +22,61 @@ export class SundialWrapper {
     this.program = sdk.programs.Sundial;
   }
 
-  // public static async createSundial(name: string): Promise<TransactionEnvelope> {
+  public async createSundial({
+    name,
+    owner,
+    liquidityMint,
+    reserve
+  }: {
+    name: string;
+    owner: PublicKey;
+    liquidityMint: PublicKey;
+    reserve: ReserveInfo;
+  }): Promise<TransactionEnvelope> {
+    const [sundialPubkey, sundialBump] = await this.getSundialAccountAndNounce(name);
+    this.setSundial(sundialPubkey);
+    const [principleTokenMint, principleBump] = await this.getPrincipleMintAndNounce();
+    const [yieldTokenMint, yieldBump] = await this.getYieldMintAndNounce();
+    const [liquidityTokenSupply, liquidityBump] = await this.getLiquidityTokenSupplyAndNounce();
+    const [lpTokenSupply, lpBump] = await this.getLPTokenSupplyAndNounce();
+    const [redeemFeeReceiver, feeReceiverBump] = await this.getFeeReceiverAndNounce();
+    const [sundialAuthority, authorityBump] = await this.getSundialAuthorityAndNounce();
 
-  // }
+    return new TransactionEnvelope(this.sdk.provider, [
+      this.program.instruction.initialize(
+      {
+          sundialBump: sundialBump,
+          authorityBump: authorityBump,
+          portLiquidityBump: liquidityBump,
+          portLpBump: lpBump,
+          principleMintBump: principleBump,
+          yieldMintBump: yieldBump,
+          feeReceiverBump: feeReceiverBump
+        },
+        name,
+        new BN(1849276800), // 8th of August 2028
+        PORT_LENDING,
+        {
+          accounts: {
+            sundial: sundialPubkey,
+            sundialAuthority: sundialAuthority,
+            sundialPortLiquidityWallet: liquidityTokenSupply,
+            sundialPortLpWallet: lpTokenSupply,
+            principleTokenMint: principleTokenMint,
+            yieldTokenMint: yieldTokenMint,
+            portLiquidityMint: liquidityMint,
+            portLpMint: reserve.getShareId().key,
+            feeReceiverWallet: redeemFeeReceiver,
+            reserve: reserve.getReserveId().key,
+            tokenProgram: TOKEN_PROGRAM_ID,
+            systemProgram: SystemProgram.programId,
+            rent: SYSVAR_RENT_PUBKEY,
+            user: owner,
+            clock: SYSVAR_CLOCK_PUBKEY,
+          },
+        }),
+    ]);
+  }
 
   public setSundial(key: PublicKey): void {
     this.sundial = key;
@@ -37,40 +94,54 @@ export class SundialWrapper {
     return this.sundial;
   }
 
-  public async getSundialAuthority(): Promise<PublicKey> {
-    return (await PublicKey.findProgramAddress(
+  public async getSundialAccountAndNounce(name: string): Promise<[PublicKey, number]> {
+    return await PublicKey.findProgramAddress(
+      [strToUint8(name)],
+      this.program.programId
+    );
+  }
+
+  public async getSundialAuthorityAndNounce(): Promise<[PublicKey, number]> {
+    return await PublicKey.findProgramAddress(
       [],
       this.program.programId
-    ))[0];
+    );
   }
 
-  public async getPrincipleMint(): Promise<PublicKey> {
-    return (await PublicKey.findProgramAddress(
-      [this.sundial.toBuffer(), strToUint8("principle_mint") ],
+  public async getPrincipleMintAndNounce(): Promise<[PublicKey, number]> {
+    return await PublicKey.findProgramAddress(
+      [this.sundial.toBuffer(), strToUint8(PRINCIPLE_MINT_KEY) ],
       this.program.programId
-    ))[0];
+    );
   }
 
 
-  public async getYieldMint(): Promise<PublicKey> {
-    return (await PublicKey.findProgramAddress(
-      [this.sundial.toBuffer(), strToUint8("yield_mint")],
+  public async getYieldMintAndNounce(): Promise<[PublicKey, number]> {
+    return await PublicKey.findProgramAddress(
+      [this.sundial.toBuffer(), strToUint8(YIELD_MINT_KEY)],
       this.program.programId
-    ))[0];
+    );
   }
 
-  public async getLiquidityTokenSupply(): Promise<PublicKey> {
-    return (await PublicKey.findProgramAddress(
-      [this.sundial.toBuffer(), strToUint8("lp")],
+  public async getLiquidityTokenSupplyAndNounce(): Promise<[PublicKey, number]> {
+    return await PublicKey.findProgramAddress(
+      [this.sundial.toBuffer(), strToUint8(LIQUIDITY_KEY)],
       this.program.programId
-    ))[0];
+    );
   }
 
-  public async getLPTokenSupply(): Promise<PublicKey> {
-    return (await PublicKey.findProgramAddress(
-      [this.sundial.toBuffer(), strToUint8("lp")],
+  public async getLPTokenSupplyAndNounce(): Promise<[PublicKey, number]> {
+    return await PublicKey.findProgramAddress(
+      [this.sundial.toBuffer(), strToUint8(LP_KEY)],
       this.program.programId
-    ))[0];
+    );
+  }
+
+  public async getFeeReceiverAndNounce(): Promise<[PublicKey, number]> {
+    return await PublicKey.findProgramAddress(
+      [this.sundial.toBuffer(), strToUint8(LP_KEY)],
+      this.program.programId
+    );
   }
 
   public async mintPrincipleAndYieldTokens({
@@ -103,11 +174,11 @@ export class SundialWrapper {
         {
         accounts: {
           sundial: this.sundial,
-          sundialAuthority: await this.getSundialAuthority(),
-          sundialPortLpWallet: await this.getLPTokenSupply(),
+          sundialAuthority: (await this.getSundialAuthorityAndNounce())[0],
+          sundialPortLpWallet: (await this.getLPTokenSupplyAndNounce())[0],
 
-          principleTokenMint: await this.getPrincipleMint(),
-          yieldTokenMint: await this.getYieldMint(),
+          principleTokenMint: (await this.getPrincipleMintAndNounce())[0],
+          yieldTokenMint: (await this.getYieldMintAndNounce())[0],
 
           userLiquidityWallet: userLiquidityWallet,
           userPrincipleTokenWallet: userPrincipleTokenWallet,
@@ -144,9 +215,9 @@ export class SundialWrapper {
       this.program.instruction.redeemPrincipleTokens({
         accounts: {
           sundial: this.sundial,
-          sundialAuthority: await this.getSundialAuthority(),
-          sundialPortLiquidityWallet: await this.getLiquidityTokenSupply(),
-          principleTokenMint: await this.getPrincipleMint(),
+          sundialAuthority: (await this.getSundialAuthorityAndNounce())[0],
+          sundialPortLiquidityWallet: (await this.getLiquidityTokenSupplyAndNounce())[0],
+          principleTokenMint: (await this.getPrincipleMintAndNounce())[0],
           userLiquidityWallet: userLiquidityWallet,
           userPrincipleTokenWallet: userPrincipleTokenWallet,
           userAuthority: userAuthority,
@@ -175,10 +246,10 @@ export class SundialWrapper {
       this.program.instruction.redeemYieldTokens({
         accounts: {
           sundial: this.sundial,
-          sundialAuthority: await this.getSundialAuthority(),
-          sundialPortLiquidityWallet: await this.getLiquidityTokenSupply(),
-          yieldTokenMint: await this.getYieldMint(),
-          principleTokenMint: await this.getPrincipleMint(),
+          sundialAuthority: (await this.getSundialAuthorityAndNounce())[0],
+          sundialPortLiquidityWallet: (await this.getLiquidityTokenSupplyAndNounce())[0],
+          yieldTokenMint: (await this.getYieldMintAndNounce())[0],
+          principleTokenMint: (await this.getPrincipleMintAndNounce())[0],
           userLiquidityWallet: userLiquidityWallet,
           userYieldTokenWallet: userYieldTokenWallet,
           userAuthority: userAuthority,
@@ -208,9 +279,9 @@ export class SundialWrapper {
       this.program.instruction.redeemLp({
         accounts: {
           sundial: this.sundial,
-          sundialAuthority: await this.getSundialAuthority(),
-          sundialPortLiquidityWallet: await this.getLiquidityTokenSupply(),
-          sundialPortLpWallet: await this.getLPTokenSupply(),
+          sundialAuthority: (await this.getSundialAuthorityAndNounce())[0],
+          sundialPortLiquidityWallet: (await this.getLiquidityTokenSupplyAndNounce())[0],
+          sundialPortLpWallet: (await this.getLPTokenSupplyAndNounce())[0],
           portAccounts: {
             lendingMarket: lendingMarket,
             lendingMarketAuthority: lendingMarketAuthority,
