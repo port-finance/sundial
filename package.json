@@ -1,8 +1,11 @@
 {
     "name": "@port.finance/sundial",
-    "version": "0.0.3",
+    "version": "0.0.4",
     "description": "Sundial",
+    "main": "dist/cjs/index.js",
+    "module": "dist/esm/index.js",
     "license": "AGPL-3.0",
+    "repository": "git@github.com:port-finance/sundial.git",
     "scripts": {
         "build": "rm -fr dist/ && tsc -P tsconfig.build.json && tsc -P tsconfig.esm.json",
         "test:e2e": "ANCHOR_WALLET=~/.config/solana/id.json anchor test --skip-build 'tests/*.ts'",
