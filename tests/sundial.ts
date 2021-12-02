@@ -7,7 +7,11 @@ import { DEFAULT_RESERVE_CONFIG, PORT_LENDING } from './constants';
 import { createMintAndVault, getTokenAccount } from '@project-serum/common';
 import {assert} from 'chai';
 import { createDefaultReserve, createLendingMarket, ReserveState } from './utils';
-import { refreshReserveInstruction } from '@port.finance/port-sdk';
+import { refreshReserveInstruction, ReserveInfo } from '@port.finance/port-sdk';
+import {ReserveParser} from '@port.finance/port-sdk/lib/parsers/ReserveParser'
+import { ParsedAccount } from '@port.finance/port-sdk/lib/parsers/ParsedAccount';
+import { ReserveData } from '@port.finance/port-sdk/lib/structs/ReserveData';
+import { makeSDK } from './workspace';
 
 
 describe('sundial', () => {
@@ -17,7 +21,8 @@ describe('sundial', () => {
 
   const sundial = new Program<Sundial>(
     IDL, workspace.Sundial.programId, provider);
-
+  const sdk = makeSDK();
+  const sundialSDK = sdk.sundial;
   let lendingMarket: Keypair;
   it ('Initialize Lending Market', async () => {
     lendingMarket = await createLendingMarket(provider);
@@ -110,23 +115,19 @@ describe('sundial', () => {
       sundial.programId
     );
 
-    const [sundialAuthority] = await PublicKey.findProgramAddress(
-      [],
-      sundial.programId
-    );
+    sundialSDK.setSundial(sundialAcc);
+    await sundialSDK.reloadSundial();
 
-    const [principleTokenMint] = await PublicKey.findProgramAddress(
-      [sundialAcc.toBuffer(), strToUint8("principle_mint") ],
-      sundial.programId
-    );
-    const [yieldTokenMint] = await PublicKey.findProgramAddress(
-      [sundialAcc.toBuffer(), strToUint8("yield_mint")],
-      sundial.programId
-    );
 
-    const [lpTokenSupply] = await PublicKey.findProgramAddress(
-      [sundialAcc.toBuffer(), strToUint8("lp")],
-      sundial.programId
+    const principleTokenMint = await sundialSDK.getPrincipleMint();
+    const yieldTokenMint = await sundialSDK.getYieldMint();
+
+    const raw = {
+      pubkey: reserveState.address,
+      account: await provider.connection.getAccountInfo(reserveState.address)
+    }
+    const reserveInfo = ReserveInfo.fromRaw(
+      ReserveParser(raw) as ParsedAccount<ReserveData>
     );
 
     const createPrincipleAndYieldTokenWalletsTx = new Transaction();
@@ -168,39 +169,16 @@ describe('sundial', () => {
       createPrincipleAndYieldTokenWalletsTx
     );
 
-
-    const [lendingMarketAuthority] = await PublicKey.findProgramAddress(
-      [lendingMarket.publicKey.toBuffer()],
-      PORT_LENDING
-    );
     const amount = new BN(100000000);
-    const depositIx = sundial.instruction.mintPrincipleTokensAndYieldTokens(
-      amount,
+    const transactionEnvelope = await sundialSDK.mintPrincipleAndYieldTokens(
       {
-        accounts: {
-          sundial: sundialAcc,
-          sundialAuthority: sundialAuthority,
-          sundialPortLpWallet: lpTokenSupply,
-
-          principleTokenMint: principleTokenMint,
-          yieldTokenMint: yieldTokenMint,
-
-          userLiquidityWallet: liquidityVault,
-          userPrincipleTokenWallet: principleAssocTokenAccount,
-          userYieldTokenWallet: yieldAssocTokenAccount,
-          userAuthority: provider.wallet.publicKey,
-          portAccounts: {
-            lendingMarket: lendingMarket.publicKey,
-            lendingMarketAuthority: lendingMarketAuthority,
-            reserve: reserveState.address,
-            reserveCollateralMint: reserveState.collateralMintAccount,
-            reserveLiquidityWallet: reserveState.liquiditySupplyPubkey,
-            portLendingProgram: PORT_LENDING,
-          },
-          tokenProgram: TOKEN_PROGRAM_ID,
-          clock: SYSVAR_CLOCK_PUBKEY,
-        },
-        signers: []
+        amount: amount,
+        userLiquidityWallet: liquidityVault,
+        userPrincipleTokenWallet: principleAssocTokenAccount,
+        userYieldTokenWallet: yieldAssocTokenAccount,
+        userAuthority: provider.wallet.publicKey,
+        reserve: reserveInfo,
+        lendingMarket: lendingMarket.publicKey
       }
     );
 
@@ -212,7 +190,7 @@ describe('sundial', () => {
     const depositTx = new Transaction();
     depositTx.add(
       refreshReserveIx,
-      depositIx
+      ...transactionEnvelope.instructions
     );
     await provider.send(depositTx);
     const principleWallet = await getTokenAccount(provider, principleAssocTokenAccount);

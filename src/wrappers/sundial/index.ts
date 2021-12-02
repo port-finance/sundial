@@ -5,6 +5,7 @@ import { SundialSDK } from "../../sdk";
 import invariant from "tiny-invariant";
 import { TOKEN_PROGRAM_ID } from "@solana/spl-token";
 import { ReserveInfo } from "@port.finance/port-sdk";
+import BN from "bn.js";
 
 
 export class SundialWrapper {
@@ -14,6 +15,14 @@ export class SundialWrapper {
 
   constructor(public readonly sdk: SundialSDK) {
     this.program = sdk.programs.Sundial;
+  }
+
+  // public static async createSundial(name: string): Promise<TransactionEnvelope> {
+
+  // }
+
+  public setSundial(key: PublicKey): void {
+    this.sundial = key;
   }
 
   public async reloadSundial(): Promise<void> {
@@ -29,42 +38,43 @@ export class SundialWrapper {
   }
 
   public async getSundialAuthority(): Promise<PublicKey> {
-    return await PublicKey.findProgramAddress(
+    return (await PublicKey.findProgramAddress(
       [],
       this.program.programId
-    )[0];
+    ))[0];
   }
 
   public async getPrincipleMint(): Promise<PublicKey> {
-    return await PublicKey.findProgramAddress(
+    return (await PublicKey.findProgramAddress(
       [this.sundial.toBuffer(), strToUint8("principle_mint") ],
       this.program.programId
-    )[0];
+    ))[0];
   }
 
 
   public async getYieldMint(): Promise<PublicKey> {
-    return await PublicKey.findProgramAddress(
+    return (await PublicKey.findProgramAddress(
       [this.sundial.toBuffer(), strToUint8("yield_mint")],
       this.program.programId
-    )[0];
+    ))[0];
   }
 
   public async getLiquidityTokenSupply(): Promise<PublicKey> {
-    return await PublicKey.findProgramAddress(
+    return (await PublicKey.findProgramAddress(
       [this.sundial.toBuffer(), strToUint8("lp")],
       this.program.programId
-    )[0];
+    ))[0];
   }
 
   public async getLPTokenSupply(): Promise<PublicKey> {
-    return await PublicKey.findProgramAddress(
+    return (await PublicKey.findProgramAddress(
       [this.sundial.toBuffer(), strToUint8("lp")],
       this.program.programId
-    )[0];
+    ))[0];
   }
 
   public async mintPrincipleAndYieldTokens({
+    amount,
     lendingMarket,
     reserve,
     userLiquidityWallet,
@@ -72,6 +82,7 @@ export class SundialWrapper {
     userYieldTokenWallet,
     userAuthority,
   }: {
+    amount: BN;
     lendingMarket: PublicKey;
     reserve: ReserveInfo;
     userLiquidityWallet: PublicKey;
@@ -87,7 +98,9 @@ export class SundialWrapper {
       PORT_LENDING
     );
     return new TransactionEnvelope(this.sdk.provider, [
-      this.program.instruction.mintPrincipleTokensAndYieldTokens({
+      this.program.instruction.mintPrincipleTokensAndYieldTokens(
+        amount,
+        {
         accounts: {
           sundial: this.sundial,
           sundialAuthority: await this.getSundialAuthority(),
