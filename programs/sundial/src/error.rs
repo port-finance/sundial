@@ -14,7 +14,10 @@ pub enum SundialError {
     #[msg("Please call redeem before first redeem of principle or yield")]
     NotRedeemLpYet,
     #[msg("Not the redeem time yet")]
+    //305
     NotEndYet,
     #[msg("Contract already end")]
     AlreadyEnd,
+    #[msg("MathOverflow")]
+    MathOverflow,
 }

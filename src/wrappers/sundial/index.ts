@@ -25,13 +25,13 @@ export class SundialWrapper {
   public async createSundial({
     name,
     owner,
-    endTimeStamp,
+    durationInSeconds,
     liquidityMint,
     reserve
   }: {
     name: string;
     owner: PublicKey;
-    endTimeStamp: BN;
+    durationInSeconds: BN;
     liquidityMint: PublicKey;
     reserve: ReserveInfo;
   }): Promise<TransactionEnvelope> {
@@ -56,7 +56,7 @@ export class SundialWrapper {
           feeReceiverBump: feeReceiverBump
         },
         name,
-        endTimeStamp, 
+        durationInSeconds,
         PORT_LENDING,
         {
           accounts: {
@@ -209,12 +209,12 @@ export class SundialWrapper {
     userLiquidityWallet: PublicKey;
     userPrincipleTokenWallet: PublicKey;
     userAuthority: PublicKey;
-  }) {
+  }, amount: BN) {
     invariant(this.sundial, "sundial key not set");
     invariant(this.sundialData, "sundial data not loaded");
 
     return new TransactionEnvelope(this.sdk.provider, [
-      this.program.instruction.redeemPrincipleTokens({
+      this.program.instruction.redeemPrincipleTokens(amount,{
         accounts: {
           sundial: this.sundial,
           sundialAuthority: (await this.getSundialAuthorityAndNounce())[0],
@@ -235,17 +235,16 @@ export class SundialWrapper {
     userYieldTokenWallet,
     userAuthority,
   }: {
-    lendingMarket: PublicKey;
-    reserve: ReserveInfo;
     userLiquidityWallet: PublicKey;
     userYieldTokenWallet: PublicKey;
     userAuthority: PublicKey;
-  }) {
+  }, amount: BN) {
     invariant(this.sundial, "sundial key not set");
     invariant(this.sundialData, "sundial data not loaded");
 
     return new TransactionEnvelope(this.sdk.provider, [
-      this.program.instruction.redeemYieldTokens({
+      this.program.instruction.redeemYieldTokens( amount,{
+
         accounts: {
           sundial: this.sundial,
           sundialAuthority: (await this.getSundialAuthorityAndNounce())[0],
