@@ -1,5 +1,6 @@
 import { PublicKey } from "@solana/web3.js";
-import { IDL, SundialProgram } from "./programs/sundial";
+import { SundialProgram } from "./programs/sundial";
+import { SundialJSON } from "./idls/sundial";
 
 export interface Programs {
   Sundial: SundialProgram;
@@ -14,5 +15,5 @@ export const SUNDIAL_ADDRESSES = {
 };
 
 export const SUNDIAL_IDLS = {
-  Sundial: IDL,
+  Sundial: SundialJSON,
 };

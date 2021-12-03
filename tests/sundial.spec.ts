@@ -7,11 +7,9 @@ import { DEFAULT_RESERVE_CONFIG } from './constants';
 import {createMintAndVault, getTokenAccount, sleep} from '@project-serum/common';
 import {assert} from 'chai';
 import { createDefaultReserve, createLendingMarket, ReserveState } from './utils';
-import {refreshReserveInstruction, ReserveInfo} from '@port.finance/port-sdk';
-import {ReserveParser} from '@port.finance/port-sdk/lib/parsers/ReserveParser'
-import { ParsedAccount } from '@port.finance/port-sdk/lib/parsers/ParsedAccount';
-import { ReserveData } from '@port.finance/port-sdk/lib/structs/ReserveData';
+import {refreshReserveInstruction} from '@port.finance/port-sdk';
 import { makeSDK } from './workspace';
+import { ReserveParser, ParsedAccount, ReserveData } from '@port.finance/port-sdk';
 
 
 describe('sundial', () => {
@@ -31,7 +29,7 @@ describe('sundial', () => {
   let reserveState: ReserveState;
   let liquidityMint: PublicKey;
   let liquidityVault: PublicKey;
-  let reserveInfo: ReserveInfo;
+  let reserveInfo: ParsedAccount<ReserveData>;
 
   it ('Initialize Reserve', async () => {
     const [mintPubkey, vaultPubkey] = await createMintAndVault(provider, new BN(1000000000000), provider.wallet.publicKey, 6);
@@ -43,9 +41,7 @@ describe('sundial', () => {
       pubkey: reserveState.address,
       account: await provider.connection.getAccountInfo(reserveState.address)
     }
-    reserveInfo = ReserveInfo.fromRaw(
-      ReserveParser(raw) as ParsedAccount<ReserveData>
-    );
+    reserveInfo = ReserveParser(raw);
   })
 
   const poolName = "USDC";

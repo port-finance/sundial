@@ -62,4 +62,6 @@ jobs:
           cargo install --git https://github.com/project-serum/anchor --tag v0.18.0 anchor-cli --locked
       - name: Build Self
         run: anchor build
+      - run: ./scripts/parse-idls.sh
+      - run: ./scripts/generate-idl-types.sh
       - run: yarn test:e2e
