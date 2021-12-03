@@ -13,25 +13,36 @@ declare_id!("SDLxV7m1qmoqkytqYRGY1x438AbYCqekPsPxK4kvwuk");
 #[program]
 pub mod sundial {
     use super::*;
+    use crate::error::SundialError;
     use crate::event::*;
     use crate::helpers::{create_mint_to_cpi, create_transfer_cpi};
+    use anchor_spl::token::accessor::amount as token_amount;
     use anchor_spl::token::{burn, mint_to, transfer, Burn};
     use port_anchor_adaptor::port_accessor::exchange_rate;
     use port_anchor_adaptor::{deposit_reserve, redeem};
+    use port_variable_rate_lending_instructions::math::{Rate as PortRate, U128 as PortU128};
+    use port_variable_rate_lending_instructions::state::CollateralExchangeRate;
     use solana_maths::{Decimal, TryDiv, TryMul};
+
     pub fn initialize(
         ctx: Context<InitializeSundial>,
         bumps: SundialBumps,
         _name: String,
-        end_unix_time_stamp: u64,
+        duration_in_seconds: i64,
         port_lending_program: Pubkey,
     ) -> ProgramResult {
         let sundial = &mut ctx.accounts.sundial;
         sundial.bumps = bumps;
         sundial.token_program = ctx.accounts.token_program.key();
         sundial.reserve = ctx.accounts.reserve.key();
-        sundial.end_unix_time_stamp = end_unix_time_stamp;
+        let start_exchange_rate = exchange_rate(&ctx.accounts.reserve)?;
+        sundial.start_exchange_rate = start_exchange_rate.0 .0 .0;
         sundial.port_lending_program = port_lending_program;
+        let current_unix_time_stamp = ctx.accounts.clock.unix_timestamp;
+        sundial.duration_in_seconds = duration_in_seconds;
+        sundial.end_unix_time_stamp = current_unix_time_stamp
+            .checked_add(duration_in_seconds)
+            .ok_or(SundialError::MathOverflow)?;
         Ok(())
     }
 
@@ -40,19 +51,9 @@ pub mod sundial {
         amount: u64,
     ) -> ProgramResult {
         let sundial = &ctx.accounts.sundial;
-        let principle_supply_amount = ctx.accounts.principle_token_mint.supply;
-        let lp_amount = ctx.accounts.sundial_port_lp_wallet.amount;
-        let port_exchange_rate = exchange_rate(&ctx.accounts.port_accounts.reserve)?;
-
-        let lp_equivalent_principle = port_exchange_rate.collateral_to_liquidity(lp_amount)?;
-        let principle_mint_amount = if lp_amount == 0 {
-            amount
-        } else {
-            Decimal::from(principle_supply_amount)
-                .try_div(lp_equivalent_principle)?
-                .try_mul(amount)?
-                .try_floor_u64()?
-        };
+        let existed_lp_amount = token_amount(&ctx.accounts.sundial_port_lp_wallet)?;
+        let start_exchange_rate =
+            CollateralExchangeRate(PortRate(PortU128(sundial.start_exchange_rate)));
 
         deposit_reserve(
             ctx.accounts.port_accounts.create_deposit_reserve_context(
@@ -64,6 +65,13 @@ pub mod sundial {
                 &[&[&[]]],
             ),
             amount,
+        )?;
+
+        let new_lp_amount = token_amount(&ctx.accounts.sundial_port_lp_wallet)?;
+        let principle_mint_amount = start_exchange_rate.collateral_to_liquidity(
+            new_lp_amount
+                .checked_sub(existed_lp_amount)
+                .ok_or(SundialError::MathOverflow)?,
         )?;
 
         mint_to(
@@ -131,8 +139,12 @@ pub mod sundial {
 
     pub fn redeem_yield_tokens(ctx: Context<RedeemYieldToken>, amount: u64) -> ProgramResult {
         let principle_supply_amount = ctx.accounts.principle_token_mint.supply;
-        let liquidity_of_yield =
-            ctx.accounts.sundial_port_liquidity_wallet.amount - principle_supply_amount;
+        let liquidity_of_yield = ctx
+            .accounts
+            .sundial_port_liquidity_wallet
+            .amount
+            .checked_sub(principle_supply_amount)
+            .ok_or(SundialError::MathOverflow)?;
         let yield_supply_amount = ctx.accounts.yield_token_mint.supply;
         let amount_to_redeem = Decimal::from(liquidity_of_yield)
             .try_div(yield_supply_amount)?

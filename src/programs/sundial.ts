@@ -1,5 +1,3 @@
-import type { AnchorTypes } from "@saberhq/anchor-contrib";
-
 export type Sundial = {
   "version": "0.0.0",
   "name": "sundial",
@@ -95,8 +93,8 @@ export type Sundial = {
           "type": "string"
         },
         {
-          "name": "endUnixTimeStamp",
-          "type": "u64"
+          "name": "durationInSeconds",
+          "type": "i64"
         },
         {
           "name": "portLendingProgram",
@@ -109,7 +107,7 @@ export type Sundial = {
       "accounts": [
         {
           "name": "sundial",
-          "isMut": true,
+          "isMut": false,
           "isSigner": false
         },
         {
@@ -220,7 +218,7 @@ export type Sundial = {
         },
         {
           "name": "sundialPortLiquidityWallet",
-          "isMut": false,
+          "isMut": true,
           "isSigner": false
         },
         {
@@ -266,7 +264,7 @@ export type Sundial = {
       "accounts": [
         {
           "name": "sundial",
-          "isMut": true,
+          "isMut": false,
           "isSigner": false
         },
         {
@@ -276,7 +274,7 @@ export type Sundial = {
         },
         {
           "name": "sundialPortLiquidityWallet",
-          "isMut": false,
+          "isMut": true,
           "isSigner": false
         },
         {
@@ -327,7 +325,7 @@ export type Sundial = {
       "accounts": [
         {
           "name": "sundial",
-          "isMut": true,
+          "isMut": false,
           "isSigner": false
         },
         {
@@ -342,7 +340,7 @@ export type Sundial = {
         },
         {
           "name": "sundialPortLiquidityWallet",
-          "isMut": false,
+          "isMut": true,
           "isSigner": false
         },
         {
@@ -407,8 +405,21 @@ export type Sundial = {
             }
           },
           {
+            "name": "durationInDays",
+            "type": "i64"
+          },
+          {
             "name": "endUnixTimeStamp",
-            "type": "u64"
+            "type": "i64"
+          },
+          {
+            "name": "startExchangeRate",
+            "type": {
+              "array": [
+                "u64",
+                2
+              ]
+            }
           },
           {
             "name": "reserve",
@@ -464,6 +475,58 @@ export type Sundial = {
       }
     }
   ],
+  "events": [
+    {
+      "name": "DidDeposit",
+      "fields": [
+        {
+          "name": "liquiditySpent",
+          "type": "u64",
+          "index": false
+        },
+        {
+          "name": "principleTokenMinted",
+          "type": "u64",
+          "index": false
+        },
+        {
+          "name": "yieldTokenMinted",
+          "type": "u64",
+          "index": false
+        }
+      ]
+    },
+    {
+      "name": "DidRedeemPrinciple",
+      "fields": [
+        {
+          "name": "principleBurned",
+          "type": "u64",
+          "index": false
+        },
+        {
+          "name": "liquidityRedeemed",
+          "type": "u64",
+          "index": false
+        }
+      ]
+    },
+    {
+      "name": "DidRedeemYield",
+      "fields": [
+        {
+          "name": "yieldBurned",
+          "type": "u64",
+          "index": false
+        },
+        {
+          "name": "liquidityRedeemed",
+          "type": "u64",
+          "index": false
+        }
+      ]
+    }
+  ],
   "errors": [
     {
       "code": 300,
@@ -484,6 +547,26 @@ export type Sundial = {
       "code": 303,
       "name": "ReserveIsNotRefreshed",
       "msg": "Please refresh reserve before deposit"
+    },
+    {
+      "code": 304,
+      "name": "NotRedeemLpYet",
+      "msg": "Please call redeem before first redeem of principle or yield"
+    },
+    {
+      "code": 305,
+      "name": "NotEndYet",
+      "msg": "Not the redeem time yet"
+    },
+    {
+      "code": 306,
+      "name": "AlreadyEnd",
+      "msg": "Contract already end"
+    },
+    {
+      "code": 307,
+      "name": "MathOverflow",
+      "msg": "MathOverflow"
     }
   ]
 };
@@ -583,8 +666,8 @@ export const IDL: Sundial = {
           "type": "string"
         },
         {
-          "name": "endUnixTimeStamp",
-          "type": "u64"
+          "name": "durationInSeconds",
+          "type": "i64"
         },
         {
           "name": "portLendingProgram",
@@ -597,7 +680,7 @@ export const IDL: Sundial = {
       "accounts": [
         {
           "name": "sundial",
-          "isMut": true,
+          "isMut": false,
           "isSigner": false
         },
         {
@@ -708,7 +791,7 @@ export const IDL: Sundial = {
         },
         {
           "name": "sundialPortLiquidityWallet",
-          "isMut": false,
+          "isMut": true,
           "isSigner": false
         },
         {
@@ -754,7 +837,7 @@ export const IDL: Sundial = {
       "accounts": [
         {
           "name": "sundial",
-          "isMut": true,
+          "isMut": false,
           "isSigner": false
         },
         {
@@ -764,7 +847,7 @@ export const IDL: Sundial = {
         },
         {
           "name": "sundialPortLiquidityWallet",
-          "isMut": false,
+          "isMut": true,
           "isSigner": false
         },
         {
@@ -815,7 +898,7 @@ export const IDL: Sundial = {
       "accounts": [
         {
           "name": "sundial",
-          "isMut": true,
+          "isMut": false,
           "isSigner": false
         },
         {
@@ -830,7 +913,7 @@ export const IDL: Sundial = {
         },
         {
           "name": "sundialPortLiquidityWallet",
-          "isMut": false,
+          "isMut": true,
           "isSigner": false
         },
         {
@@ -895,8 +978,21 @@ export const IDL: Sundial = {
             }
           },
           {
+            "name": "durationInDays",
+            "type": "i64"
+          },
+          {
             "name": "endUnixTimeStamp",
-            "type": "u64"
+            "type": "i64"
+          },
+          {
+            "name": "startExchangeRate",
+            "type": {
+              "array": [
+                "u64",
+                2
+              ]
+            }
           },
           {
             "name": "reserve",
@@ -952,6 +1048,58 @@ export const IDL: Sundial = {
       }
     }
   ],
+  "events": [
+    {
+      "name": "DidDeposit",
+      "fields": [
+        {
+          "name": "liquiditySpent",
+          "type": "u64",
+          "index": false
+        },
+        {
+          "name": "principleTokenMinted",
+          "type": "u64",
+          "index": false
+        },
+        {
+          "name": "yieldTokenMinted",
+          "type": "u64",
+          "index": false
+        }
+      ]
+    },
+    {
+      "name": "DidRedeemPrinciple",
+      "fields": [
+        {
+          "name": "principleBurned",
+          "type": "u64",
+          "index": false
+        },
+        {
+          "name": "liquidityRedeemed",
+          "type": "u64",
+          "index": false
+        }
+      ]
+    },
+    {
+      "name": "DidRedeemYield",
+      "fields": [
+        {
+          "name": "yieldBurned",
+          "type": "u64",
+          "index": false
+        },
+        {
+          "name": "liquidityRedeemed",
+          "type": "u64",
+          "index": false
+        }
+      ]
+    }
+  ],
   "errors": [
     {
       "code": 300,
@@ -972,16 +1120,26 @@ export const IDL: Sundial = {
       "code": 303,
       "name": "ReserveIsNotRefreshed",
       "msg": "Please refresh reserve before deposit"
+    },
+    {
+      "code": 304,
+      "name": "NotRedeemLpYet",
+      "msg": "Please call redeem before first redeem of principle or yield"
+    },
+    {
+      "code": 305,
+      "name": "NotEndYet",
+      "msg": "Not the redeem time yet"
+    },
+    {
+      "code": 306,
+      "name": "AlreadyEnd",
+      "msg": "Contract already end"
+    },
+    {
+      "code": 307,
+      "name": "MathOverflow",
+      "msg": "MathOverflow"
     }
   ]
 };
-
-export type SundialTypes = AnchorTypes<
-  Sundial, {
-    sundial: SundialData;
-  }
->;
-
-type Accounts = SundialTypes["Accounts"];
-export type SundialData = Accounts["sundial"]
-export type SundialProgram = SundialTypes["Program"];
