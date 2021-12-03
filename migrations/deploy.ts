@@ -7,7 +7,6 @@ import * as anchor from "@project-serum/anchor";
 import { createDefaultReserve, createLendingMarket } from "../tests/utils";
 import { SolanaProvider } from "@saberhq/solana-contrib";
 import { SundialSDK } from "../src";
-import { ReserveInfo } from "@port.finance/port-sdk";
 import { ReserveParser } from "@port.finance/port-sdk/lib/parsers/ReserveParser";
 import { ReserveData } from "@port.finance/port-sdk/lib/structs/ReserveData";
 import { ParsedAccount } from "@port.finance/port-sdk/lib/parsers/ParsedAccount";
@@ -35,15 +34,13 @@ module.exports = async function (provider) {
     pubkey: reserveState.address,
     account: await provider.connection.getAccountInfo(reserveState.address)
   }
-  const reserveInfo = ReserveInfo.fromRaw(
-    ReserveParser(raw) as ParsedAccount<ReserveData>
-  );
+  const reserveInfo = ReserveParser(raw) as ParsedAccount<ReserveData>;
 
   const createTx = await sundialSDK.sundial.createSundial(
     {
       name: "USDC",
       owner: provider.wallet.publicKey,
-      endTimeStamp: new anchor.BN(1849276800), // 8th of August 2028
+      durationInSeconds: new anchor.BN(1849276800), // 8th of August 2028
       liquidityMint: mintPubkey,
       reserve: reserveInfo
     }

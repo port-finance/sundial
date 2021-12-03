@@ -4,8 +4,8 @@ import { SundialData, SundialProgram } from "../../programs/sundial";
 import { SundialSDK } from "../../sdk";
 import invariant from "tiny-invariant";
 import { TOKEN_PROGRAM_ID } from "@solana/spl-token";
-import { ReserveInfo } from "@port.finance/port-sdk";
 import BN from "bn.js";
+import { ReserveData, ParsedAccount } from "@port.finance/port-sdk";
 
 
 const PRINCIPLE_MINT_KEY = "principle_mint";
@@ -33,7 +33,7 @@ export class SundialWrapper {
     owner: PublicKey;
     durationInSeconds: BN;
     liquidityMint: PublicKey;
-    reserve: ReserveInfo;
+    reserve: ParsedAccount<ReserveData>;
   }): Promise<TransactionEnvelope> {
     const [sundialPubkey, sundialBump] = await this.getSundialAccountAndNounce(name);
     this.setSundial(sundialPubkey);
@@ -67,9 +67,9 @@ export class SundialWrapper {
             principleTokenMint: principleTokenMint,
             yieldTokenMint: yieldTokenMint,
             portLiquidityMint: liquidityMint,
-            portLpMint: reserve.getShareId().key,
+            portLpMint: reserve.data.collateral.mintPubkey,
             feeReceiverWallet: redeemFeeReceiver,
-            reserve: reserve.getReserveId().key,
+            reserve: reserve.pubkey,
             tokenProgram: TOKEN_PROGRAM_ID,
             systemProgram: SystemProgram.programId,
             rent: SYSVAR_RENT_PUBKEY,
@@ -157,7 +157,7 @@ export class SundialWrapper {
   }: {
     amount: BN;
     lendingMarket: PublicKey;
-    reserve: ReserveInfo;
+    reserve: ParsedAccount<ReserveData>;
     userLiquidityWallet: PublicKey;
     userPrincipleTokenWallet: PublicKey;
     userYieldTokenWallet: PublicKey;
@@ -187,11 +187,11 @@ export class SundialWrapper {
           userYieldTokenWallet: userYieldTokenWallet,
           userAuthority: userAuthority,
           portAccounts: {
-            lendingMarket: reserve.marketId.key,
+            lendingMarket: reserve.data.lendingMarket,
             lendingMarketAuthority: lendingMarketAuthority,
-            reserve: reserve.getReserveId().key,
-            reserveCollateralMint: reserve.getShareId().key,
-            reserveLiquidityWallet: reserve.getAssetBalanceId().key,
+            reserve: reserve.pubkey,
+            reserveCollateralMint: reserve.data.collateral.mintPubkey,
+            reserveLiquidityWallet: reserve.data.liquidity.supplyPubkey,
             portLendingProgram: PORT_LENDING,
           },
           tokenProgram: TOKEN_PROGRAM_ID,
@@ -266,7 +266,7 @@ export class SundialWrapper {
     reserve,
   }: {
     lendingMarket: PublicKey;
-    reserve: ReserveInfo;
+    reserve: ParsedAccount<ReserveData>;
   }) {
     invariant(this.sundial, "sundial key not set");
     invariant(this.sundialData, "sundial data not loaded");
@@ -286,9 +286,9 @@ export class SundialWrapper {
           portAccounts: {
             lendingMarket: lendingMarket,
             lendingMarketAuthority: lendingMarketAuthority,
-            reserve: reserve.getReserveId().key,
-            reserveLiquidityWallet: reserve.getAssetBalanceId().key,
-            reserveCollateralMint: reserve.getShareId().key,
+            reserve: reserve.pubkey,
+            reserveLiquidityWallet: reserve.data.liquidity.supplyPubkey,
+            reserveCollateralMint: reserve.data.collateral.mintPubkey,
             portLendingProgram: PORT_LENDING
           },
           tokenProgram: TOKEN_PROGRAM_ID,
