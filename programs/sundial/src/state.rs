@@ -1,7 +1,6 @@
 use anchor_lang::prelude::*;
 
 pub(crate) const DISCRIMINATOR_SIZE: usize = 8;
-pub(crate) const SUNDIALPADDING: usize = 256;
 #[account]
 #[derive(Debug, PartialEq, Default)]
 pub struct Sundial {
@@ -12,6 +11,7 @@ pub struct Sundial {
     pub reserve: Pubkey,
     pub token_program: Pubkey,
     pub port_lending_program: Pubkey,
+    pub _padding: [u64; 24],
 }
 
 #[derive(AnchorDeserialize, AnchorSerialize, Debug, PartialEq, Clone, Default)]

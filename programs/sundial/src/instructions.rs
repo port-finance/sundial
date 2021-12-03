@@ -1,5 +1,5 @@
 use crate::error::*;
-use crate::state::{Sundial, SundialBumps, DISCRIMINATOR_SIZE, SUNDIALPADDING};
+use crate::state::{Sundial, SundialBumps, DISCRIMINATOR_SIZE};
 use anchor_lang::prelude::*;
 use anchor_spl::token::{accessor::amount as token_amount, Mint, TokenAccount};
 use borsh::to_vec;
@@ -11,7 +11,7 @@ use port_anchor_adaptor::{
 #[derive(Accounts, Clone)]
 #[instruction(bumps: SundialBumps, name: String, duration_in_seconds: i64, port_lending_program: Pubkey)]
 pub struct InitializeSundial<'info> {
-    #[account(init, seeds=[name.as_ref()], bump=bumps.sundial_bump, payer=user, space = to_vec(&Sundial::default()).unwrap().len() + DISCRIMINATOR_SIZE + SUNDIALPADDING)]
+    #[account(init, seeds=[name.as_ref()], bump=bumps.sundial_bump, payer=user, space = to_vec(&Sundial::default()).unwrap().len() + DISCRIMINATOR_SIZE)]
     pub sundial: Account<'info, Sundial>,
     #[account(seeds=[], bump=bumps.authority_bump)]
     pub sundial_authority: AccountInfo<'info>,
