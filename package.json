@@ -1,9 +1,13 @@
 {
-    "name": "@poleaggregator/pole",
-    "version": "0.0.1",
-    "description": "Pole Aggregator",
+    "name": "@port.finance/sundial",
+    "version": "0.0.5",
+    "description": "Sundial",
+    "main": "dist/cjs/index.js",
+    "module": "dist/esm/index.js",
     "license": "AGPL-3.0",
+    "repository": "git@github.com:port-finance/sundial.git",
     "scripts": {
+        "build": "rm -fr dist/ && tsc -P tsconfig.build.json && tsc -P tsconfig.esm.json",
         "test:e2e": "ANCHOR_WALLET=~/.config/solana/id.json anchor test --skip-build 'tests/*.ts'",
         "lint": "eslint tests --cache && eslint src --cache",
         "lint:ci": "eslint tests --max-warnings=0 && eslint src --max-warnings=0"
@@ -14,6 +18,7 @@
         "@project-serum/common": "^0.0.1-beta.3",
         "@saberhq/anchor-contrib": "^1.10.4",
         "@saberhq/chai-solana": "^1.10.4",
+        "@types/lodash.mapvalues": "^4.6.6",
         "jsbi": "^4.1.0",
         "lodash.mapvalues": "^4.6.0"
     },
@@ -31,5 +36,12 @@
         "mocha": "^9.0.3",
         "ts-mocha": "^8.0.0",
         "typescript": "^4.3.5"
-    }
+    },
+    "publishConfig": {
+        "access": "public"
+    },
+    "files": [
+        "dist/",
+        "src/"
+    ]
 }
