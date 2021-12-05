@@ -16,7 +16,6 @@ pub struct Sundial {
 
 #[derive(AnchorDeserialize, AnchorSerialize, Debug, PartialEq, Clone, Default)]
 pub struct SundialBumps {
-    pub sundial_bump: u8,
     pub authority_bump: u8,
     pub port_liquidity_bump: u8,
     pub port_lp_bump: u8,

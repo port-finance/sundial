@@ -1,6 +1,4 @@
-import { Provider, setProvider, workspace, BN } from '@project-serum/anchor';
-import { Program } from '@project-serum/anchor';
-import {Sundial, IDL} from '../target/types/sundial';
+import { Provider, setProvider, BN } from '@project-serum/anchor';
 import {Keypair, PublicKey, Transaction} from '@solana/web3.js';
 import { ASSOCIATED_TOKEN_PROGRAM_ID, Token, TOKEN_PROGRAM_ID } from '@solana/spl-token';
 import { DEFAULT_RESERVE_CONFIG } from './constants';
@@ -17,8 +15,6 @@ describe('sundial', () => {
   setProvider(Provider.local());
   const provider = Provider.local();
 
-  const sundial = new Program<Sundial>(
-    IDL, workspace.Sundial.programId, provider);
   const sdk = makeSDK();
   const sundialSDK = sdk.sundial;
   let lendingMarket: Keypair;
@@ -44,33 +40,23 @@ describe('sundial', () => {
     reserveInfo = ReserveParser(raw);
   })
 
-  const poolName = "USDC";
-  const strToUint8 = (str: string) => {
-    return Uint8Array.from(str.split("").map(c => c.charCodeAt(0)))
-  }
+  const sundialBase = Keypair.generate();
 
   const initSundial = (duration: number) => async () => {
     const createTx = await sundialSDK.createSundial(
       {
-        name: poolName,
+        sundialBase: sundialBase,
         owner: provider.wallet.publicKey,
         durationInSeconds: new BN(duration), // 8th of August 2028
         liquidityMint: liquidityMint,
         reserve: reserveInfo
       }
     );
-
-    await provider.send(
-      createTx.build()
-    );
+    await createTx.confirm();
   };
 
   const redeemPortLp = async () => {
-    const [sundialAcc] = await PublicKey.findProgramAddress(
-      [strToUint8(poolName)],
-      sundial.programId
-    );
-    sundialSDK.setSundial(sundialAcc);
+    sundialSDK.setSundial(sundialBase.publicKey);
 
     await sundialSDK.reloadSundial();
     const trans = await sundialSDK.redeemPortLp(
@@ -88,11 +74,7 @@ describe('sundial', () => {
   }
 
   const redeemPrinciple = (amount: number | string) => async () => {
-    const [sundialAcc] = await PublicKey.findProgramAddress(
-      [strToUint8(poolName)],
-      sundial.programId
-    );
-    sundialSDK.setSundial(sundialAcc);
+    sundialSDK.setSundial(sundialBase.publicKey);
     const principleTokenMint = (await sundialSDK.getPrincipleMintAndNounce())[0];
 
     const principleAssocTokenAccount = await Token.getAssociatedTokenAddress(
@@ -116,11 +98,7 @@ describe('sundial', () => {
   }
 
   const redeemYield = (amount: number | string) => async () => {
-    const [sundialAcc] = await PublicKey.findProgramAddress(
-      [strToUint8(poolName)],
-      sundial.programId
-    );
-    sundialSDK.setSundial(sundialAcc);
+    sundialSDK.setSundial(sundialBase.publicKey);
 
     const yieldTokenMint = (await sundialSDK.getYieldMintAndNounce())[0];
 
@@ -148,12 +126,8 @@ describe('sundial', () => {
   }
 
   const depositAndMint = (amount: number | string) => async () => {
-    const [sundialAcc] = await PublicKey.findProgramAddress(
-      [strToUint8(poolName)],
-      sundial.programId
-    );
+    sundialSDK.setSundial(sundialBase.publicKey);
 
-    sundialSDK.setSundial(sundialAcc);
     await sundialSDK.reloadSundial();
 
     const principleTokenMint = (await sundialSDK.getPrincipleMintAndNounce())[0];

@@ -1,4 +1,4 @@
-import { PublicKey, SystemProgram, SYSVAR_CLOCK_PUBKEY, SYSVAR_RENT_PUBKEY } from "@solana/web3.js";
+import { Keypair, PublicKey, SystemProgram, SYSVAR_CLOCK_PUBKEY, SYSVAR_RENT_PUBKEY } from "@solana/web3.js";
 import { TransactionEnvelope } from "@saberhq/solana-contrib";
 import { SundialData, SundialProgram } from "../../programs/sundial";
 import { SundialSDK } from "../../sdk";
@@ -6,6 +6,7 @@ import invariant from "tiny-invariant";
 import { TOKEN_PROGRAM_ID } from "@solana/spl-token";
 import BN from "bn.js";
 import { ReserveData, ParsedAccount } from "@port.finance/port-sdk";
+import { utils } from "@project-serum/anchor";
 
 
 const PRINCIPLE_MINT_KEY = "principle_mint";
@@ -23,20 +24,19 @@ export class SundialWrapper {
   }
 
   public async createSundial({
-    name,
+    sundialBase,
     owner,
     durationInSeconds,
     liquidityMint,
     reserve
   }: {
-    name: string;
+    sundialBase: Keypair;
     owner: PublicKey;
     durationInSeconds: BN;
     liquidityMint: PublicKey;
     reserve: ParsedAccount<ReserveData>;
   }): Promise<TransactionEnvelope> {
-    const [sundialPubkey, sundialBump] = await this.getSundialAccountAndNounce(name);
-    this.setSundial(sundialPubkey);
+    this.setSundial(sundialBase.publicKey);
     const [principleTokenMint, principleBump] = await this.getPrincipleMintAndNounce();
     const [yieldTokenMint, yieldBump] = await this.getYieldMintAndNounce();
     const [liquidityTokenSupply, liquidityBump] = await this.getLiquidityTokenSupplyAndNounce();
@@ -44,10 +44,9 @@ export class SundialWrapper {
     const [redeemFeeReceiver, feeReceiverBump] = await this.getFeeReceiverAndNounce();
     const [sundialAuthority, authorityBump] = await this.getSundialAuthorityAndNounce();
 
-    return new TransactionEnvelope(this.sdk.provider, [
+    const tx = new TransactionEnvelope(this.sdk.provider, [
       this.program.instruction.initialize(
-      {
-          sundialBump: sundialBump,
+        {
           authorityBump: authorityBump,
           portLiquidityBump: liquidityBump,
           portLpBump: lpBump,
@@ -55,12 +54,11 @@ export class SundialWrapper {
           yieldMintBump: yieldBump,
           feeReceiverBump: feeReceiverBump
         },
-        name,
         durationInSeconds,
         PORT_LENDING,
         {
           accounts: {
-            sundial: sundialPubkey,
+            sundial: sundialBase.publicKey,
             sundialAuthority: sundialAuthority,
             sundialPortLiquidityWallet: liquidityTokenSupply,
             sundialPortLpWallet: lpTokenSupply,
@@ -78,6 +76,7 @@ export class SundialWrapper {
           },
         }),
     ]);
+    return tx.addSigners(sundialBase);
   }
 
   public setSundial(key: PublicKey): void {
@@ -105,7 +104,7 @@ export class SundialWrapper {
 
   public async getSundialAuthorityAndNounce(): Promise<[PublicKey, number]> {
     return await PublicKey.findProgramAddress(
-      [],
+      [utils.bytes.utf8.encode("authority"), this.sundial.toBuffer()],
       this.program.programId
     );
   }

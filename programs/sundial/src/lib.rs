@@ -27,7 +27,6 @@ pub mod sundial {
     pub fn initialize(
         ctx: Context<InitializeSundial>,
         bumps: SundialBumps,
-        _name: String,
         duration_in_seconds: i64,
         port_lending_program: Pubkey,
     ) -> ProgramResult {
@@ -79,7 +78,11 @@ pub mod sundial {
                 ctx.accounts.principle_token_mint.to_account_info(),
                 ctx.accounts.user_principle_token_wallet.clone(),
                 ctx.accounts.sundial_authority.clone(),
-                &[&[&[sundial.bumps.authority_bump]]],
+                &[&[
+                    "authority".as_ref(),
+                    &ctx.accounts.sundial.key().to_bytes(),
+                    &[sundial.bumps.authority_bump],
+                ]],
                 ctx.accounts.token_program.clone(),
             ),
             principle_mint_amount,
@@ -90,7 +93,11 @@ pub mod sundial {
                 ctx.accounts.yield_token_mint.to_account_info(),
                 ctx.accounts.user_yield_token_wallet.clone(),
                 ctx.accounts.sundial_authority.clone(),
-                &[&[&[sundial.bumps.authority_bump]]],
+                &[&[
+                    "authority".as_ref(),
+                    &ctx.accounts.sundial.key().to_bytes(),
+                    &[sundial.bumps.authority_bump],
+                ]],
                 ctx.accounts.token_program.clone(),
             ),
             amount,
@@ -124,7 +131,11 @@ pub mod sundial {
                 ctx.accounts.sundial_port_liquidity_wallet.clone(),
                 ctx.accounts.user_liquidity_wallet.clone(),
                 ctx.accounts.sundial_authority.clone(),
-                &[&[&[ctx.accounts.sundial.bumps.authority_bump]]],
+                &[&[
+                    "authority".as_ref(),
+                    &ctx.accounts.sundial.key().to_bytes(),
+                    &[ctx.accounts.sundial.bumps.authority_bump],
+                ]],
                 ctx.accounts.token_program.clone(),
             ),
             amount,
@@ -166,7 +177,11 @@ pub mod sundial {
                 ctx.accounts.sundial_port_liquidity_wallet.to_account_info(),
                 ctx.accounts.user_liquidity_wallet.clone(),
                 ctx.accounts.sundial_authority.clone(),
-                &[&[&[ctx.accounts.sundial.bumps.authority_bump]]],
+                &[&[
+                    "authority".as_ref(),
+                    &ctx.accounts.sundial.key().to_bytes(),
+                    &[ctx.accounts.sundial.bumps.authority_bump],
+                ]],
                 ctx.accounts.token_program.clone(),
             ),
             amount_to_redeem,
@@ -186,7 +201,11 @@ pub mod sundial {
                 ctx.accounts.sundial_authority.clone(),
                 ctx.accounts.clock.to_account_info(),
                 ctx.accounts.token_program.clone(),
-                &[&[&[ctx.accounts.sundial.bumps.authority_bump]]],
+                &[&[
+                    "authority".as_ref(),
+                    &ctx.accounts.sundial.key().to_bytes(),
+                    &[ctx.accounts.sundial.bumps.authority_bump],
+                ]],
             ),
             ctx.accounts.sundial_port_lp_wallet.amount,
         )
