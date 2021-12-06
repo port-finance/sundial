@@ -1,3 +1,4 @@
+use crate::accessors::decimal;
 use crate::error::*;
 use crate::state::{Sundial, SundialBumps, DISCRIMINATOR_SIZE};
 use anchor_lang::prelude::*;
@@ -7,25 +8,23 @@ use port_anchor_adaptor::{
     port_accessor::{is_reserve_stale, reserve_liquidity_mint_pubkey, reserve_lp_mint_pubkey},
     Deposit as PortDeposit, Redeem,
 };
-
 #[derive(Accounts, Clone)]
 #[instruction(bumps: SundialBumps, duration_in_seconds: i64, port_lending_program: Pubkey)]
 pub struct InitializeSundial<'info> {
     #[account(init, payer=user, space = to_vec(&Sundial::default()).unwrap().len() + DISCRIMINATOR_SIZE)]
     pub sundial: Account<'info, Sundial>,
-    #[account(seeds=[b"authority", sundial.key().as_ref()], bump=bumps.authority_bump)]
+    #[account(seeds=[sundial.key().as_ref(), b"authority"], bump=bumps.authority_bump)]
     pub sundial_authority: AccountInfo<'info>,
     #[account(init, payer=user, seeds = [sundial.key().as_ref(), b"liquidity"], bump = bumps.port_liquidity_bump, token::authority=sundial_authority, token::mint=port_liquidity_mint)]
     pub sundial_port_liquidity_wallet: AccountInfo<'info>,
     #[account(init, payer=user, seeds = [sundial.key().as_ref(), b"lp"], bump = bumps.port_lp_bump, token::authority=sundial_authority, token::mint=port_lp_mint)]
     pub sundial_port_lp_wallet: AccountInfo<'info>,
-    #[account(init, payer=user, seeds = [sundial.key().as_ref(), b"principle_mint"], bump = bumps.principle_mint_bump, mint::authority=sundial_authority, mint::decimals=6)]
+    #[account(init, payer=user, seeds = [sundial.key().as_ref(), b"principle_mint"], bump = bumps.principle_mint_bump, mint::authority=sundial_authority, mint::decimals=decimal(&port_liquidity_mint)?)]
     pub principle_token_mint: AccountInfo<'info>,
-    #[account(init, payer=user, seeds = [sundial.key().as_ref(), b"yield_mint"], bump = bumps.yield_mint_bump, mint::authority=sundial_authority, mint::decimals=6)]
+    #[account(init, payer=user, seeds = [sundial.key().as_ref(), b"yield_mint"], bump = bumps.yield_mint_bump, mint::authority=sundial_authority, mint::decimals=decimal(&port_liquidity_mint)?)]
     pub yield_token_mint: AccountInfo<'info>,
     #[account(init, payer=user, seeds = [sundial.key().as_ref(), b"fee_receiver"], bump = bumps.fee_receiver_bump, token::authority=sundial_authority, token::mint=port_liquidity_mint)]
     pub fee_receiver_wallet: AccountInfo<'info>,
-
     #[account(owner = port_lending_program)]
     pub reserve: AccountInfo<'info>,
     #[account(address = reserve_liquidity_mint_pubkey(&reserve)? @ SundialError::InvalidPortLiquidityMint)]
@@ -120,7 +119,7 @@ pub struct DepositAndMintTokens<'info> {
         constraint = sundial.token_program == token_program.key(),
         constraint = sundial.port_lending_program == port_accounts.port_lending_program.key())]
     pub sundial: Account<'info, Sundial>,
-    #[account(seeds=[b"authority", sundial.key().as_ref()], bump=sundial.bumps.authority_bump)]
+    #[account(seeds=[sundial.key().as_ref(), b"authority"], bump=sundial.bumps.authority_bump)]
     pub sundial_authority: AccountInfo<'info>,
     #[account(mut, seeds = [sundial.key().as_ref(), b"lp"], bump = sundial.bumps.port_lp_bump)]
     pub sundial_port_lp_wallet: AccountInfo<'info>,
@@ -150,7 +149,7 @@ pub struct RedeemLp<'info> {
         constraint = sundial.token_program == token_program.key(),
         constraint = sundial.port_lending_program == port_accounts.port_lending_program.key())]
     pub sundial: Account<'info, Sundial>,
-    #[account(seeds=[b"authority", sundial.key().as_ref()], bump=sundial.bumps.authority_bump)]
+    #[account(seeds=[sundial.key().as_ref(), b"authority"], bump=sundial.bumps.authority_bump)]
     pub sundial_authority: AccountInfo<'info>,
     #[account(mut, seeds = [sundial.key().as_ref(), b"lp"], bump = sundial.bumps.port_lp_bump)]
     pub sundial_port_lp_wallet: Account<'info, TokenAccount>,
@@ -169,7 +168,7 @@ pub struct RedeemPrincipleToken<'info> {
         constraint = sundial.end_unix_time_stamp <= clock.unix_timestamp @ SundialError::NotEndYet,
         constraint = sundial.token_program == token_program.key())]
     pub sundial: Account<'info, Sundial>,
-    #[account(seeds=[b"authority", sundial.key().as_ref()], bump=sundial.bumps.authority_bump)]
+    #[account(seeds=[sundial.key().as_ref(), b"authority"], bump=sundial.bumps.authority_bump)]
     pub sundial_authority: AccountInfo<'info>,
     #[account(mut, seeds = [sundial.key().as_ref(), b"liquidity"], bump = sundial.bumps.port_liquidity_bump, constraint = token_amount(&sundial_port_liquidity_wallet)? != 0 @ SundialError::NotRedeemLpYet )]
     pub sundial_port_liquidity_wallet: AccountInfo<'info>,
@@ -192,7 +191,7 @@ pub struct RedeemYieldToken<'info> {
         constraint = sundial.end_unix_time_stamp <= clock.unix_timestamp @ SundialError::NotEndYet,
         constraint = sundial.token_program == token_program.key())]
     pub sundial: Account<'info, Sundial>,
-    #[account(seeds=[b"authority", sundial.key().as_ref()], bump=sundial.bumps.authority_bump)]
+    #[account(seeds=[sundial.key().as_ref(), b"authority"], bump=sundial.bumps.authority_bump)]
     pub sundial_authority: AccountInfo<'info>,
     #[account(mut, seeds = [sundial.key().as_ref(), b"liquidity"], bump = sundial.bumps.port_liquidity_bump, constraint = sundial_port_liquidity_wallet.amount != 0 @ SundialError::NotRedeemLpYet)]
     pub sundial_port_liquidity_wallet: Account<'info, TokenAccount>,
