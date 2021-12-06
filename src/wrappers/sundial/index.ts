@@ -6,7 +6,6 @@ import invariant from "tiny-invariant";
 import { TOKEN_PROGRAM_ID } from "@solana/spl-token";
 import BN from "bn.js";
 import { ReserveData, ParsedAccount } from "@port.finance/port-sdk";
-import { utils } from "@project-serum/anchor";
 
 
 const PRINCIPLE_MINT_KEY = "principle_mint";
@@ -14,6 +13,8 @@ const YIELD_MINT_KEY = "yield_mint";
 const LIQUIDITY_KEY = "liquidity";
 const LP_KEY = "lp";
 const FEE_RECEIVER_KEY = "fee_receiver";
+const AUTHORITY = "authority"
+
 export class SundialWrapper {
   public readonly program: SundialProgram;
   public sundial?: PublicKey;
@@ -104,7 +105,7 @@ export class SundialWrapper {
 
   public async getSundialAuthorityAndNounce(): Promise<[PublicKey, number]> {
     return await PublicKey.findProgramAddress(
-      [utils.bytes.utf8.encode("authority"), this.sundial.toBuffer()],
+      [this.sundial.toBuffer(), strToUint8(AUTHORITY)],
       this.program.programId
     );
   }

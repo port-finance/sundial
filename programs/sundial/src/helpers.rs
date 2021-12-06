@@ -1,6 +1,16 @@
 use anchor_lang::prelude::*;
 use anchor_spl::token::{MintTo, Transfer};
 
+macro_rules! seeds {
+    ($ctx:ident, $name: ident) => {
+        paste! {  &[&[
+                $ctx.accounts.sundial.key().as_ref(),
+                stringify!($name).as_ref(),
+                &[$ctx.accounts.sundial.bumps. [<$name _bump> ]],
+            ]]
+        }
+    };
+}
 #[inline(always)]
 pub fn create_transfer_cpi<'a, 'b, 'c, 'info>(
     from: AccountInfo<'info>,
