@@ -2,6 +2,7 @@ use crate::instructions::*;
 use crate::state::SundialBumps;
 use anchor_lang::prelude::*;
 
+pub mod accessors;
 pub mod error;
 pub mod event;
 pub mod helpers;

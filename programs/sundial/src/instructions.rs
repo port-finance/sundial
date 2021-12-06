@@ -1,3 +1,4 @@
+use crate::accessors::decimal;
 use crate::error::*;
 use crate::state::{Sundial, SundialBumps, DISCRIMINATOR_SIZE};
 use anchor_lang::prelude::*;
@@ -7,7 +8,6 @@ use port_anchor_adaptor::{
     port_accessor::{is_reserve_stale, reserve_liquidity_mint_pubkey, reserve_lp_mint_pubkey},
     Deposit as PortDeposit, Redeem,
 };
-
 #[derive(Accounts, Clone)]
 #[instruction(bumps: SundialBumps, duration_in_seconds: i64, port_lending_program: Pubkey)]
 pub struct InitializeSundial<'info> {
@@ -19,9 +19,9 @@ pub struct InitializeSundial<'info> {
     pub sundial_port_liquidity_wallet: AccountInfo<'info>,
     #[account(init, payer=user, seeds = [sundial.key().as_ref(), b"lp"], bump = bumps.port_lp_bump, token::authority=sundial_authority, token::mint=port_lp_mint)]
     pub sundial_port_lp_wallet: AccountInfo<'info>,
-    #[account(init, payer=user, seeds = [sundial.key().as_ref(), b"principle_mint"], bump = bumps.principle_mint_bump, mint::authority=sundial_authority, mint::decimals=6)]
+    #[account(init, payer=user, seeds = [sundial.key().as_ref(), b"principle_mint"], bump = bumps.principle_mint_bump, mint::authority=sundial_authority, mint::decimals=decimal(&port_liquidity_mint)?)]
     pub principle_token_mint: AccountInfo<'info>,
-    #[account(init, payer=user, seeds = [sundial.key().as_ref(), b"yield_mint"], bump = bumps.yield_mint_bump, mint::authority=sundial_authority, mint::decimals=6)]
+    #[account(init, payer=user, seeds = [sundial.key().as_ref(), b"yield_mint"], bump = bumps.yield_mint_bump, mint::authority=sundial_authority, mint::decimals=decimal(&port_liquidity_mint)?)]
     pub yield_token_mint: AccountInfo<'info>,
     #[account(init, payer=user, seeds = [sundial.key().as_ref(), b"fee_receiver"], bump = bumps.fee_receiver_bump, token::authority=sundial_authority, token::mint=port_liquidity_mint)]
     pub fee_receiver_wallet: AccountInfo<'info>,
