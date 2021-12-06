@@ -1,4 +1,4 @@
-#!/usr/bin/env bash
+#!/bin/bash
 
 # This script generates the IDL JSONs without buildling the full packages.
 
