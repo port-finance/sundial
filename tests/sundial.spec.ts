@@ -205,7 +205,10 @@ describe("sundial", () => {
     );
 
     const depositTx = new Transaction();
-    depositTx.add(refreshReserveIx, ...transactionEnvelope.instructions);
+    depositTx.add(
+      refreshReserveIx,
+      ...transactionEnvelope.instructions
+    );
     await provider.send(depositTx);
   };
 
@@ -300,7 +303,10 @@ describe("sundial", () => {
     const liquidityGot = afterLiquidityWallet.amount.sub(
       beforeLiquidityWallet.amount
     );
-    // TODO: test for the case where there is actual tokens obtained when redeem yield tokens.
     expect(liquidityGot.toString()).equal("0");
   });
+
+  // TODO: test for the case where there is actual tokens obtained when redeem yield tokens.
+  // TODO: add tests for failing case such as:
+  // - didn't refresh reserve
 });
