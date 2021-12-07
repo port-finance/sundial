@@ -51,7 +51,7 @@ module.exports = async function (provider) {
   const createTx = await sundialSDK.sundial.createSundial({
     sundialBase: sundialKeypair,
     owner: provider.wallet.publicKey,
-    durationInSeconds: new anchor.BN(1849276800), // 8th of August 2028
+    durationInSeconds: new anchor.BN(8640000), // 8th of August 2028
     liquidityMint: mintPubkey,
     reserve: reserveInfo,
   });

@@ -113,7 +113,7 @@ export async function createDefaultReserve(
       initReserveInstruction(
         initialLiquidity,
         1,
-        new BN("1000000"),
+        new BN("100000000000000000000000"),
         config,
         sourceTokenWallet,
         userCollateralTokenAccount.publicKey,
