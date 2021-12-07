@@ -217,9 +217,13 @@ describe("sundial", () => {
     await initSundial(duration);
     sundialSDK.setSundial(sundialBase.publicKey);
     await sundialSDK.reloadSundial();
+    const principleMintBump = (await sundialSDK.getPrincipleMintAndNounce())[1];
+    const yieldMintBump = (await sundialSDK.getYieldMintAndNounce())[1];
     expect(sundialSDK.sundialData.durationInSeconds.toString()).equal(
       duration.toString()
     );
+    expect(sundialSDK.sundialData.bumps.principleMintBump).equal(principleMintBump);
+    expect(sundialSDK.sundialData.bumps.yieldMintBump).equal(yieldMintBump);
     expect(sundialSDK.sundialData.reserve).eqAddress(reserveInfo.pubkey);
     expect(sundialSDK.sundialData.portLendingProgram).eqAddress(PORT_LENDING);
   });

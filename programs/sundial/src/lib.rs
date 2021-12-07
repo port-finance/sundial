@@ -2,7 +2,6 @@ use crate::instructions::*;
 use crate::state::SundialBumps;
 use anchor_lang::prelude::*;
 
-pub mod accessors;
 pub mod error;
 pub mod event;
 #[macro_use]
@@ -18,7 +17,6 @@ pub mod sundial {
     use crate::error::SundialError;
     use crate::event::*;
     use crate::helpers::{create_mint_to_cpi, create_transfer_cpi};
-    use anchor_spl::token::accessor::amount as token_amount;
     use anchor_spl::token::{burn, mint_to, transfer, Burn};
     use port_anchor_adaptor::port_accessor::exchange_rate;
     use port_anchor_adaptor::{deposit_reserve, redeem};
@@ -51,25 +49,27 @@ pub mod sundial {
         amount: u64,
     ) -> ProgramResult {
         let sundial = &ctx.accounts.sundial;
-        let existed_lp_amount = token_amount(&ctx.accounts.sundial_port_lp_wallet)?;
+        let existed_lp_amount = ctx.accounts.sundial_port_lp_wallet.amount;
         let start_exchange_rate =
             CollateralExchangeRate(PortRate(PortU128(sundial.start_exchange_rate)));
 
         deposit_reserve(
             ctx.accounts.port_accounts.create_deposit_reserve_context(
-                ctx.accounts.user_liquidity_wallet.clone(),
+                ctx.accounts.user_liquidity_wallet.to_account_info(),
                 ctx.accounts.sundial_port_lp_wallet.to_account_info(),
                 ctx.accounts.user_authority.to_account_info(),
                 ctx.accounts.clock.to_account_info(),
-                ctx.accounts.token_program.clone(),
+                ctx.accounts.token_program.to_account_info(),
                 &[&[&[]]],
             ),
             amount,
         )?;
 
-        let new_lp_amount = token_amount(&ctx.accounts.sundial_port_lp_wallet)?;
+        ctx.accounts.sundial_port_lp_wallet.reload()?;
         let principle_mint_amount = start_exchange_rate.collateral_to_liquidity(
-            new_lp_amount
+            ctx.accounts
+                .sundial_port_lp_wallet
+                .amount
                 .checked_sub(existed_lp_amount)
                 .ok_or(SundialError::MathOverflow)?,
         )?;
@@ -77,10 +77,10 @@ pub mod sundial {
         mint_to(
             create_mint_to_cpi(
                 ctx.accounts.principle_token_mint.to_account_info(),
-                ctx.accounts.user_principle_token_wallet.clone(),
-                ctx.accounts.sundial_authority.clone(),
+                ctx.accounts.user_principle_token_wallet.to_account_info(),
+                ctx.accounts.sundial_authority.to_account_info(),
                 seeds!(ctx, authority),
-                ctx.accounts.token_program.clone(),
+                ctx.accounts.token_program.to_account_info(),
             ),
             principle_mint_amount,
         )?;
@@ -88,10 +88,10 @@ pub mod sundial {
         mint_to(
             create_mint_to_cpi(
                 ctx.accounts.yield_token_mint.to_account_info(),
-                ctx.accounts.user_yield_token_wallet.clone(),
-                ctx.accounts.sundial_authority.clone(),
+                ctx.accounts.user_yield_token_wallet.to_account_info(),
+                ctx.accounts.sundial_authority.to_account_info(),
                 seeds!(ctx, authority),
-                ctx.accounts.token_program.clone(),
+                ctx.accounts.token_program.to_account_info(),
             ),
             amount,
         )?;
@@ -110,10 +110,10 @@ pub mod sundial {
     ) -> ProgramResult {
         burn(
             CpiContext::new(
-                ctx.accounts.token_program.clone(),
+                ctx.accounts.token_program.to_account_info(),
                 Burn {
-                    mint: ctx.accounts.principle_token_mint.clone(),
-                    to: ctx.accounts.user_principle_token_wallet.clone(),
+                    mint: ctx.accounts.principle_token_mint.to_account_info(),
+                    to: ctx.accounts.user_principle_token_wallet.to_account_info(),
                     authority: ctx.accounts.user_authority.to_account_info(),
                 },
             ),
@@ -121,11 +121,11 @@ pub mod sundial {
         )?;
         transfer(
             create_transfer_cpi(
-                ctx.accounts.sundial_port_liquidity_wallet.clone(),
-                ctx.accounts.user_liquidity_wallet.clone(),
-                ctx.accounts.sundial_authority.clone(),
+                ctx.accounts.sundial_port_liquidity_wallet.to_account_info(),
+                ctx.accounts.user_liquidity_wallet.to_account_info(),
+                ctx.accounts.sundial_authority.to_account_info(),
                 seeds!(ctx, authority),
-                ctx.accounts.token_program.clone(),
+                ctx.accounts.token_program.to_account_info(),
             ),
             amount,
         )?;
@@ -152,10 +152,10 @@ pub mod sundial {
             .try_floor_u64()?;
         burn(
             CpiContext::new(
-                ctx.accounts.token_program.clone(),
+                ctx.accounts.token_program.to_account_info(),
                 Burn {
                     mint: ctx.accounts.yield_token_mint.to_account_info(),
-                    to: ctx.accounts.user_yield_token_wallet.clone(),
+                    to: ctx.accounts.user_yield_token_wallet.to_account_info(),
                     authority: ctx.accounts.user_authority.to_account_info(),
                 },
             ),
@@ -164,10 +164,10 @@ pub mod sundial {
         transfer(
             create_transfer_cpi(
                 ctx.accounts.sundial_port_liquidity_wallet.to_account_info(),
-                ctx.accounts.user_liquidity_wallet.clone(),
-                ctx.accounts.sundial_authority.clone(),
+                ctx.accounts.user_liquidity_wallet.to_account_info(),
+                ctx.accounts.sundial_authority.to_account_info(),
                 seeds!(ctx, authority),
-                ctx.accounts.token_program.clone(),
+                ctx.accounts.token_program.to_account_info(),
             ),
             amount_to_redeem,
         )?;
@@ -181,11 +181,11 @@ pub mod sundial {
     pub fn redeem_lp(ctx: Context<RedeemLp>) -> ProgramResult {
         redeem(
             ctx.accounts.port_accounts.create_redeem_context(
-                ctx.accounts.sundial_port_liquidity_wallet.clone(),
+                ctx.accounts.sundial_port_liquidity_wallet.to_account_info(),
                 ctx.accounts.sundial_port_lp_wallet.to_account_info(),
-                ctx.accounts.sundial_authority.clone(),
+                ctx.accounts.sundial_authority.to_account_info(),
                 ctx.accounts.clock.to_account_info(),
-                ctx.accounts.token_program.clone(),
+                ctx.accounts.token_program.to_account_info(),
                 seeds!(ctx, authority),
             ),
             ctx.accounts.sundial_port_lp_wallet.amount,

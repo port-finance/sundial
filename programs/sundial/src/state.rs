@@ -1,6 +1,5 @@
 use anchor_lang::prelude::*;
 
-pub(crate) const DISCRIMINATOR_SIZE: usize = 8;
 #[account]
 #[derive(Debug, PartialEq, Default)]
 pub struct Sundial {
