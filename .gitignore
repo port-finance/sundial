@@ -3,7 +3,7 @@
 
 # Ignore the build directory for Rust/Anchor
 target
-
+.idea
 # Ignore backup files creates by cargo fmt.
 **/*.rs.bk
 
