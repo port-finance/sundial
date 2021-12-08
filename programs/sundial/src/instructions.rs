@@ -56,7 +56,7 @@ pub struct PortAccounts<'info> {
 pub struct DepositAndMintTokens<'info> {
     #[account(
         constraint = sundial.end_unix_time_stamp > clock.unix_timestamp @ SundialError::AlreadyEnd ,
-        constraint = sundial.reserve == port_accou  nts.reserve.key(),
+        constraint = sundial.reserve == port_accounts.reserve.key(),
         constraint = sundial.token_program == token_program.key(),
         constraint = sundial.port_lending_program == port_accounts.port_lending_program.key())]
     pub sundial: Account<'info, Sundial>,
