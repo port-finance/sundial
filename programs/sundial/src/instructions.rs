@@ -4,7 +4,7 @@ use anchor_lang::prelude::*;
 use anchor_spl::token::{Mint, Token, TokenAccount};
 use port_anchor_adaptor::{
     port_accessor::{is_reserve_stale, reserve_liquidity_mint_pubkey, reserve_lp_mint_pubkey},
-    Deposit as PortDeposit, Redeem,
+    Deposit as PortDeposit, PortReserve, Redeem,
 };
 #[derive(Accounts, Clone)]
 #[instruction(bumps: SundialBumps, duration_in_seconds: i64, port_lending_program: Pubkey)]
@@ -24,10 +24,10 @@ pub struct InitializeSundial<'info> {
     #[account(init, payer=user, seeds = [sundial.key().as_ref(), b"fee_receiver"], bump = bumps.fee_receiver_bump, token::authority=sundial_authority, token::mint=port_liquidity_mint)]
     pub fee_receiver_wallet: Box<Account<'info, TokenAccount>>,
     #[account(owner = port_lending_program)]
-    pub reserve: UncheckedAccount<'info>,
-    #[account(address = reserve_liquidity_mint_pubkey(&reserve)? @ SundialError::InvalidPortLiquidityMint)]
+    pub reserve: Box<Account<'info, PortReserve>>,
+    #[account(address = reserve.liquidity.mint_pubkey @ SundialError::InvalidPortLiquidityMint)]
     pub port_liquidity_mint: Box<Account<'info, Mint>>,
-    #[account(address = reserve_lp_mint_pubkey(&reserve)? @ SundialError::InvalidPortLpMint)]
+    #[account(address = reserve.collateral.mint_pubkey @ SundialError::InvalidPortLpMint)]
     pub port_lp_mint: Box<Account<'info, Mint>>,
 
     pub token_program: Program<'info, Token>,
@@ -52,67 +52,6 @@ pub struct PortAccounts<'info> {
     pub reserve_collateral_mint: Box<Account<'info, Mint>>,
     #[account(executable)]
     pub port_lending_program: UncheckedAccount<'info>,
-}
-
-#[allow(clippy::too_many_arguments)]
-impl<'info> PortAccounts<'info> {
-    #[inline(always)]
-    pub fn create_deposit_reserve_context<'a, 'b, 'c>(
-        &self,
-        user_liquidity: AccountInfo<'info>,
-        user_lp: AccountInfo<'info>,
-        user_authority: AccountInfo<'info>,
-        clock: AccountInfo<'info>,
-        token_program: AccountInfo<'info>,
-        seeds: &'a [&'b [&'c [u8]]],
-    ) -> CpiContext<'a, 'b, 'c, 'info, PortDeposit<'info>> {
-        let cpi_accounts = PortDeposit {
-            source_liquidity: user_liquidity,
-            destination_collateral: user_lp,
-            reserve: self.reserve.to_account_info(),
-            reserve_liquidity_supply: self.reserve_liquidity_wallet.to_account_info(),
-            reserve_collateral_mint: self.reserve_collateral_mint.to_account_info(),
-            lending_market: self.lending_market.to_account_info(),
-            lending_market_authority: self.lending_market_authority.to_account_info(),
-            transfer_authority: user_authority,
-            clock,
-            token_program,
-        };
-
-        CpiContext::new_with_signer(
-            self.port_lending_program.to_account_info(),
-            cpi_accounts,
-            seeds,
-        )
-    }
-    #[inline(always)]
-    pub fn create_redeem_context<'a, 'b, 'c>(
-        &self,
-        user_liquidity: AccountInfo<'info>,
-        user_lp: AccountInfo<'info>,
-        user_authority: AccountInfo<'info>,
-        clock: AccountInfo<'info>,
-        token_program: AccountInfo<'info>,
-        seeds: &'a [&'b [&'c [u8]]],
-    ) -> CpiContext<'a, 'b, 'c, 'info, Redeem<'info>> {
-        let cpi_accounts = Redeem {
-            source_collateral: user_lp,
-            destination_liquidity: user_liquidity,
-            reserve: self.reserve.to_account_info(),
-            reserve_collateral_mint: self.reserve_collateral_mint.to_account_info(),
-            reserve_liquidity_supply: self.reserve_liquidity_wallet.to_account_info(),
-            lending_market: self.lending_market.to_account_info(),
-            lending_market_authority: self.lending_market_authority.to_account_info(),
-            transfer_authority: user_authority,
-            token_program,
-            clock,
-        };
-        CpiContext::new_with_signer(
-            self.port_lending_program.to_account_info(),
-            cpi_accounts,
-            seeds,
-        )
-    }
 }
 
 #[derive(Accounts)]
@@ -209,4 +148,65 @@ pub struct RedeemYieldToken<'info> {
     pub user_authority: Signer<'info>,
     pub token_program: Program<'info, Token>,
     pub clock: Sysvar<'info, Clock>,
+}
+
+#[allow(clippy::too_many_arguments)]
+impl<'info> PortAccounts<'info> {
+    #[inline(always)]
+    pub fn create_deposit_reserve_context<'a, 'b, 'c>(
+        &self,
+        user_liquidity: AccountInfo<'info>,
+        user_lp: AccountInfo<'info>,
+        user_authority: AccountInfo<'info>,
+        clock: AccountInfo<'info>,
+        token_program: AccountInfo<'info>,
+        seeds: &'a [&'b [&'c [u8]]],
+    ) -> CpiContext<'a, 'b, 'c, 'info, PortDeposit<'info>> {
+        let cpi_accounts = PortDeposit {
+            source_liquidity: user_liquidity,
+            destination_collateral: user_lp,
+            reserve: self.reserve.to_account_info(),
+            reserve_liquidity_supply: self.reserve_liquidity_wallet.to_account_info(),
+            reserve_collateral_mint: self.reserve_collateral_mint.to_account_info(),
+            lending_market: self.lending_market.to_account_info(),
+            lending_market_authority: self.lending_market_authority.to_account_info(),
+            transfer_authority: user_authority,
+            clock,
+            token_program,
+        };
+
+        CpiContext::new_with_signer(
+            self.port_lending_program.to_account_info(),
+            cpi_accounts,
+            seeds,
+        )
+    }
+    #[inline(always)]
+    pub fn create_redeem_context<'a, 'b, 'c>(
+        &self,
+        user_liquidity: AccountInfo<'info>,
+        user_lp: AccountInfo<'info>,
+        user_authority: AccountInfo<'info>,
+        clock: AccountInfo<'info>,
+        token_program: AccountInfo<'info>,
+        seeds: &'a [&'b [&'c [u8]]],
+    ) -> CpiContext<'a, 'b, 'c, 'info, Redeem<'info>> {
+        let cpi_accounts = Redeem {
+            source_collateral: user_lp,
+            destination_liquidity: user_liquidity,
+            reserve: self.reserve.to_account_info(),
+            reserve_collateral_mint: self.reserve_collateral_mint.to_account_info(),
+            reserve_liquidity_supply: self.reserve_liquidity_wallet.to_account_info(),
+            lending_market: self.lending_market.to_account_info(),
+            lending_market_authority: self.lending_market_authority.to_account_info(),
+            transfer_authority: user_authority,
+            token_program,
+            clock,
+        };
+        CpiContext::new_with_signer(
+            self.port_lending_program.to_account_info(),
+            cpi_accounts,
+            seeds,
+        )
+    }
 }
