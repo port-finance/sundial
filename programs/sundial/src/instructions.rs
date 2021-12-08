@@ -3,8 +3,7 @@ use crate::state::{Sundial, SundialBumps};
 use anchor_lang::prelude::*;
 use anchor_spl::token::{Mint, Token, TokenAccount};
 use port_anchor_adaptor::{
-    port_accessor::{is_reserve_stale, reserve_liquidity_mint_pubkey, reserve_lp_mint_pubkey},
-    Deposit as PortDeposit, PortReserve, Redeem,
+    port_accessor::is_reserve_stale, Deposit as PortDeposit, PortReserve, Redeem,
 };
 #[derive(Accounts, Clone)]
 #[instruction(bumps: SundialBumps, duration_in_seconds: i64, port_lending_program: Pubkey)]
@@ -44,8 +43,8 @@ pub struct PortAccounts<'info> {
     #[account(owner = port_lending_program.key())]
     pub lending_market: UncheckedAccount<'info>,
     pub lending_market_authority: UncheckedAccount<'info>,
-    #[account(mut, owner = port_lending_program.key(), constraint = !is_reserve_stale(&reserve)? @ SundialError::ReserveIsNotRefreshed)]
-    pub reserve: UncheckedAccount<'info>,
+    #[account(mut, owner = port_lending_program.key(), constraint = !reserve.last_update.stale @ SundialError::ReserveIsNotRefreshed)]
+    pub reserve: Box<Account<'info, PortReserve>>,
     #[account(mut)]
     pub reserve_liquidity_wallet: Box<Account<'info, TokenAccount>>,
     #[account(mut)]

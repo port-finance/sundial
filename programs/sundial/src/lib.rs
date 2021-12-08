@@ -18,7 +18,7 @@ pub mod sundial {
     use crate::event::*;
     use crate::helpers::{create_mint_to_cpi, create_transfer_cpi};
     use anchor_spl::token::{burn, mint_to, transfer, Burn};
-    use port_anchor_adaptor::port_accessor::exchange_rate;
+
     use port_anchor_adaptor::{deposit_reserve, redeem};
     use port_variable_rate_lending_instructions::math::{Rate as PortRate, U128 as PortU128};
     use port_variable_rate_lending_instructions::state::CollateralExchangeRate;
