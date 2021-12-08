@@ -33,11 +33,7 @@ pub mod sundial {
         sundial.bumps = bumps;
         sundial.token_program = ctx.accounts.token_program.key();
         sundial.reserve = ctx.accounts.reserve.key();
-        let start_exchange_rate = ctx
-            .accounts
-            .reserve
-            .collateral
-            .exchange_rate(ctx.accounts.reserve.liquidity.total_supply()?)?;
+        let start_exchange_rate = ctx.accounts.reserve.collateral_exchange_rate()?;
         sundial.start_exchange_rate = start_exchange_rate.0 .0 .0;
         sundial.port_lending_program = port_lending_program;
         let current_unix_time_stamp = ctx.accounts.clock.unix_timestamp;
