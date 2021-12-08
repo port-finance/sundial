@@ -2,9 +2,7 @@ use crate::error::*;
 use crate::state::{Sundial, SundialBumps};
 use anchor_lang::prelude::*;
 use anchor_spl::token::{Mint, Token, TokenAccount};
-use port_anchor_adaptor::{
-    port_accessor::is_reserve_stale, Deposit as PortDeposit, PortReserve, Redeem,
-};
+use port_anchor_adaptor::{Deposit as PortDeposit, PortReserve, Redeem};
 #[derive(Accounts, Clone)]
 #[instruction(bumps: SundialBumps, duration_in_seconds: i64, port_lending_program: Pubkey)]
 pub struct InitializeSundial<'info> {
