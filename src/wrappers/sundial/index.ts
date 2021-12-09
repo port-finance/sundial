@@ -5,7 +5,7 @@ import { SundialSDK } from "../../sdk";
 import invariant from "tiny-invariant";
 import { TOKEN_PROGRAM_ID } from "@solana/spl-token";
 import BN from "bn.js";
-import { ReserveData, ParsedAccount } from "@port.finance/port-sdk";
+import { ReserveData, ParsedAccount, refreshReserveInstruction } from "@port.finance/port-sdk";
 
 
 const PRINCIPLE_MINT_KEY = "principle_mint";
@@ -271,12 +271,15 @@ export class SundialWrapper {
     invariant(this.sundial, "sundial key not set");
     invariant(this.sundialData, "sundial data not loaded");
 
+    const ixs = [
+      refreshReserveInstruction(reserve.pubkey, null)
+    ];
     const [lendingMarketAuthority] = await PublicKey.findProgramAddress(
       [lendingMarket.toBuffer()],
       PORT_LENDING
     );
 
-    return new TransactionEnvelope(this.sdk.provider, [
+    ixs.push(
       this.program.instruction.redeemLp({
         accounts: {
           sundial: this.sundial,
@@ -295,7 +298,9 @@ export class SundialWrapper {
           clock: SYSVAR_CLOCK_PUBKEY,
         }
       }),
-    ]);
+    )
+
+    return new TransactionEnvelope(this.sdk.provider, ixs);
   }
 
 }

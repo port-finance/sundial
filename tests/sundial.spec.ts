@@ -18,12 +18,18 @@ import {
   ReserveState,
 } from "./utils";
 import { refreshReserveInstruction } from "@port.finance/port-sdk";
+import {
+  getATAAddress,
+  getOrCreateATA,
+} from "@saberhq/token-utils";
 import { makeSDK } from "./workspace";
 import {
   ReserveParser,
   ParsedAccount,
   ReserveData,
 } from "@port.finance/port-sdk";
+import { expectTX } from "@saberhq/chai-solana";
+import { SolanaProvider } from "@saberhq/solana-contrib";
 
 describe("sundial", () => {
   setProvider(Provider.local());
@@ -31,9 +37,9 @@ describe("sundial", () => {
 
   const sdk = makeSDK();
   const sundialSDK = sdk.sundial;
-  let lendingMarket: Keypair;
+  let lendingMarketKP: Keypair;
   it("Initialize Lending Market", async () => {
-    lendingMarket = await createLendingMarket(provider);
+    lendingMarketKP = await createLendingMarket(provider);
   });
 
   let reserveState: ReserveState;
@@ -54,9 +60,10 @@ describe("sundial", () => {
       provider,
       1,
       vaultPubkey,
-      lendingMarket.publicKey,
+      lendingMarketKP.publicKey,
       DEFAULT_RESERVE_CONFIG
     );
+
     const raw = {
       pubkey: reserveState.address,
       account: await provider.connection.getAccountInfo(reserveState.address),
@@ -64,31 +71,15 @@ describe("sundial", () => {
     reserveInfo = ReserveParser(raw);
   });
 
-  const sundialBase = Keypair.generate();
-
-  const initSundial = async (duration: BN) => {
-    const createTx = await sundialSDK.createSundial({
-      sundialBase: sundialBase,
-      owner: provider.wallet.publicKey,
-      durationInSeconds: duration, // 8th of August 2028
-      liquidityMint: liquidityMint,
-      reserve: reserveInfo,
-    });
-    await createTx.confirm();
-  };
 
   const redeemPortLp = async () => {
     sundialSDK.setSundial(sundialBase.publicKey);
 
     await sundialSDK.reloadSundial();
     const redeemTx = await sundialSDK.redeemPortLp({
-      lendingMarket: lendingMarket.publicKey,
+      lendingMarket: lendingMarketKP.publicKey,
       reserve: reserveInfo,
     });
-    redeemTx.instructions.push(
-      refreshReserveInstruction(reserveState.address, null)
-    );
-    redeemTx.instructions.reverse();
     await redeemTx.confirm();
   };
 
@@ -196,7 +187,7 @@ describe("sundial", () => {
       userYieldTokenWallet: yieldAssocTokenAccount,
       userAuthority: provider.wallet.publicKey,
       reserve: reserveInfo,
-      lendingMarket: lendingMarket.publicKey,
+      lendingMarket: lendingMarketKP.publicKey,
     });
 
     const refreshReserveIx = refreshReserveInstruction(
@@ -212,9 +203,17 @@ describe("sundial", () => {
     await provider.send(depositTx);
   };
 
+  const sundialBase = Keypair.generate();
   it("Initialize Sundial", async () => {
-    const duration = new BN(2);
-    await initSundial(duration);
+    const duration = new BN(2); // 2 seconds from now
+    const createTx = await sundialSDK.createSundial({
+      sundialBase: sundialBase,
+      owner: provider.wallet.publicKey,
+      durationInSeconds: duration, // 8th of August 2028
+      liquidityMint: liquidityMint,
+      reserve: reserveInfo,
+    });
+    expectTX(createTx, "Crate sundial").to.be.fulfilled;
     sundialSDK.setSundial(sundialBase.publicKey);
     await sundialSDK.reloadSundial();
     const principleMintBump = (await sundialSDK.getPrincipleMintAndNounce())[1];
@@ -265,7 +264,8 @@ describe("sundial", () => {
     expect(principleWallet.amount.toString()).equal(amount.toString());
     expect(yieldWallet.amount.toString()).equal(amount.toString());
   });
-  it("Sleep", async () => await sleep(2000));
+  it("Unable to redeem Port Lp", async () => await sleep(3000));
+  it("Sleep", async () => await sleep(3000));
   it("Redeem Port Lp", async () => {
     await redeemPortLp();
     const liquidityWalletPubkey = (
