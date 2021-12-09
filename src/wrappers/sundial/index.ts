@@ -3,7 +3,7 @@ import { TransactionEnvelope } from "@saberhq/solana-contrib";
 import { SundialData, SundialProgram } from "../../programs/sundial";
 import { SundialSDK } from "../../sdk";
 import invariant from "tiny-invariant";
-import { TOKEN_PROGRAM_ID } from "@solana/spl-token";
+import { ASSOCIATED_TOKEN_PROGRAM_ID, Token, TOKEN_PROGRAM_ID } from "@solana/spl-token";
 import BN from "bn.js";
 import { ReserveData, ParsedAccount, refreshReserveInstruction } from "@port.finance/port-sdk";
 import { getOrCreateATA } from "@saberhq/token-utils";
@@ -247,6 +247,7 @@ export class SundialWrapper {
           sundial: this.sundial,
           sundialAuthority: (await this.getSundialAuthorityAndNounce())[0],
           sundialPortLiquidityWallet: (await this.getLiquidityTokenSupplyAndNounce())[0],
+          sundialPortLpWallet: (await this.getLPTokenSupplyAndNounce())[0],
           principleTokenMint: (await this.getPrincipleMintAndNounce())[0],
           userLiquidityWallet: userLiquidityWallet,
           userPrincipleTokenWallet: userPrincipleTokenWallet,
@@ -259,28 +260,39 @@ export class SundialWrapper {
   }
 
   public async redeemYieldTokens({
+    amount,
     userLiquidityWallet,
-    userYieldTokenWallet,
+    owner,
     userAuthority,
   }: {
+    amount: BN;
     userLiquidityWallet: PublicKey;
-    userYieldTokenWallet: PublicKey;
+    owner: PublicKey;
     userAuthority: PublicKey;
-  }, amount: BN) {
+  }) {
     invariant(this.sundial, "sundial key not set");
     invariant(this.sundialData, "sundial data not loaded");
 
-    return new TransactionEnvelope(this.sdk.provider, [
-      this.program.instruction.redeemYieldTokens( amount,{
+    const [yieldTokenMint] = await this.getYieldMintAndNounce();
 
+    const yieldAssocTokenAccount = await Token.getAssociatedTokenAddress(
+      ASSOCIATED_TOKEN_PROGRAM_ID,
+      TOKEN_PROGRAM_ID,
+      yieldTokenMint,
+      owner
+    );
+
+    return new TransactionEnvelope(this.sdk.provider, [
+      this.program.instruction.redeemYieldTokens(amount, {
         accounts: {
           sundial: this.sundial,
           sundialAuthority: (await this.getSundialAuthorityAndNounce())[0],
           sundialPortLiquidityWallet: (await this.getLiquidityTokenSupplyAndNounce())[0],
+          sundialPortLpWallet: (await this.getLPTokenSupplyAndNounce())[0],
           yieldTokenMint: (await this.getYieldMintAndNounce())[0],
           principleTokenMint: (await this.getPrincipleMintAndNounce())[0],
           userLiquidityWallet: userLiquidityWallet,
-          userYieldTokenWallet: userYieldTokenWallet,
+          userYieldTokenWallet: yieldAssocTokenAccount,
           userAuthority: userAuthority,
           tokenProgram: TOKEN_PROGRAM_ID,
           clock: SYSVAR_CLOCK_PUBKEY,

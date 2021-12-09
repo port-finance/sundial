@@ -161,16 +161,19 @@ pub mod sundial {
             ),
             amount,
         )?;
-        transfer(
-            create_transfer_cpi(
-                ctx.accounts.sundial_port_liquidity_wallet.to_account_info(),
-                ctx.accounts.user_liquidity_wallet.to_account_info(),
-                ctx.accounts.sundial_authority.to_account_info(),
-                seeds!(ctx, authority),
-                ctx.accounts.token_program.to_account_info(),
-            ),
-            amount_to_redeem,
-        )?;
+
+        if amount_to_redeem != 0 {
+            transfer(
+                create_transfer_cpi(
+                    ctx.accounts.sundial_port_liquidity_wallet.to_account_info(),
+                    ctx.accounts.user_liquidity_wallet.to_account_info(),
+                    ctx.accounts.sundial_authority.to_account_info(),
+                    seeds!(ctx, authority),
+                    ctx.accounts.token_program.to_account_info(),
+                ),
+                amount_to_redeem,
+            )?;
+        }
         emit!(DidRedeemYield {
             yield_burned: amount,
             liquidity_redeemed: amount_to_redeem

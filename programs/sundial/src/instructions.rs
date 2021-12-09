@@ -112,7 +112,9 @@ pub struct RedeemPrincipleToken<'info> {
     pub sundial_authority: UncheckedAccount<'info>,
     #[account(mut, seeds = [sundial.key().as_ref(), b"liquidity"], bump = sundial.bumps.port_liquidity_bump, constraint = sundial_port_liquidity_wallet.amount != 0 @ SundialError::NotRedeemLpYet )]
     pub sundial_port_liquidity_wallet: Box<Account<'info, TokenAccount>>,
-    #[account(mut, seeds = [sundial.key().as_ref(), b"principle_mint"], bump = sundial.bumps.principle_mint_bump)]
+    #[account(mut, seeds = [sundial.key().as_ref(), b"lp"], bump = sundial.bumps.port_lp_bump, constraint = sundial_port_lp_wallet.amount == 0 @ SundialError::NotRedeemLpYet)]
+    pub sundial_port_lp_wallet: Box<Account<'info, TokenAccount>>,
+    #[account(mut, seeds = [sundial.key().as_ref(), b"principle_mint"], bump = sundial.bumps.principle_mint_bump, )]
     pub principle_token_mint: Box<Account<'info, Mint>>,
     #[account(mut)]
     pub user_liquidity_wallet: Box<Account<'info, TokenAccount>>,
@@ -132,8 +134,10 @@ pub struct RedeemYieldToken<'info> {
     pub sundial: Account<'info, Sundial>,
     #[account(seeds=[sundial.key().as_ref(), b"authority"], bump=sundial.bumps.authority_bump)]
     pub sundial_authority: UncheckedAccount<'info>,
-    #[account(mut, seeds = [sundial.key().as_ref(), b"liquidity"], bump = sundial.bumps.port_liquidity_bump, constraint = sundial_port_liquidity_wallet.amount != 0 @ SundialError::NotRedeemLpYet)]
+    #[account(mut, seeds = [sundial.key().as_ref(), b"liquidity"], bump = sundial.bumps.port_liquidity_bump)]
     pub sundial_port_liquidity_wallet: Account<'info, TokenAccount>,
+    #[account(mut, seeds = [sundial.key().as_ref(), b"lp"], bump = sundial.bumps.port_lp_bump, constraint = sundial_port_lp_wallet.amount == 0 @ SundialError::NotRedeemLpYet)]
+    pub sundial_port_lp_wallet: Box<Account<'info, TokenAccount>>,
     #[account(mut, seeds = [sundial.key().as_ref(), b"yield_mint"], bump = sundial.bumps.yield_mint_bump)]
     pub yield_token_mint: Box<Account<'info, Mint>>,
     #[account(mut, seeds = [sundial.key().as_ref(), b"principle_mint"], bump = sundial.bumps.principle_mint_bump)]

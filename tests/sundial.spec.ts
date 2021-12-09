@@ -89,31 +89,6 @@ describe("sundial", () => {
     await trans.confirm();
   };
 
-  const redeemYield = async (amount: BN) => {
-    sundialSDK.setSundial(sundialBase.publicKey);
-
-    const yieldTokenMint = (await sundialSDK.getYieldMintAndNounce())[0];
-
-    const yieldAssocTokenAccount = await Token.getAssociatedTokenAddress(
-      ASSOCIATED_TOKEN_PROGRAM_ID,
-      TOKEN_PROGRAM_ID,
-      yieldTokenMint,
-      provider.wallet.publicKey
-    );
-
-    await sundialSDK.reloadSundial();
-    const trans = await sundialSDK.redeemYieldTokens(
-      {
-        userLiquidityWallet: liquidityVault,
-        userYieldTokenWallet: yieldAssocTokenAccount,
-        userAuthority: provider.wallet.publicKey,
-      },
-      new BN(amount)
-    );
-
-    await trans.confirm();
-  };
-
   const sundialBase = Keypair.generate();
   it("Initialize Sundial", async () => {
     const duration = new BN(2); // 2 seconds from now
@@ -137,8 +112,8 @@ describe("sundial", () => {
     expect(sundialSDK.sundialData.reserve).eqAddress(reserveInfo.pubkey);
     expect(sundialSDK.sundialData.portLendingProgram).eqAddress(PORT_LENDING);
   });
+  const amount = new BN(100000);
   it("Mints principle and yield tokens", async () => {
-    const amount = new BN(100000);
     const depositTx = await sundialSDK.mintPrincipleAndYieldTokens({
       amount,
       userLiquidityWallet: liquidityVault,
@@ -187,7 +162,6 @@ describe("sundial", () => {
     await expectTX(redeemTx, "redeem from Port successful").to.be.rejected;
   });
 
-  // TODO: test unable to redeem principle token before expiry
   it("Redeem Port Lp", async () => {
     await sleep(3000)
     const redeemTx = await sundialSDK.redeemPortLp({
@@ -205,7 +179,6 @@ describe("sundial", () => {
     expect(liquidityWallet.amount.toString()).not.equal("0");
   });
   it("Redeem principle", async () => {
-    const amount = new BN(100);
     const beforeLiquidityWallet = await getTokenAccount(
       provider,
       liquidityVault
@@ -220,13 +193,20 @@ describe("sundial", () => {
     );
     expect(liquidityGot.toString()).equal(amount.toString());
   });
-  it("Redeem yield", async () => {
-    const amount = new BN(100);
+  it("Redeem yield token", async () => {
     const beforeLiquidityWallet = await getTokenAccount(
       provider,
       liquidityVault
     );
-    await redeemYield(amount);
+    const redeemTx = await sundialSDK.redeemYieldTokens(
+      {
+        amount,
+        userLiquidityWallet: liquidityVault,
+        owner: provider.wallet.publicKey,
+        userAuthority: provider.wallet.publicKey,
+      },
+    );
+    await expectTX(redeemTx, "redeem yield token").to.be.fulfilled;
     const afterLiquidityWallet = await getTokenAccount(
       provider,
       liquidityVault
