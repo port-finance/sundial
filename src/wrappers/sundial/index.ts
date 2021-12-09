@@ -1,4 +1,4 @@
-import { Keypair, PublicKey, SystemProgram, SYSVAR_CLOCK_PUBKEY, SYSVAR_RENT_PUBKEY } from "@solana/web3.js";
+import { Keypair, PublicKey, SystemProgram, SYSVAR_CLOCK_PUBKEY, SYSVAR_RENT_PUBKEY, TransactionInstruction } from "@solana/web3.js";
 import { TransactionEnvelope } from "@saberhq/solana-contrib";
 import { SundialData, SundialProgram } from "../../programs/sundial";
 import { SundialSDK } from "../../sdk";
@@ -6,6 +6,7 @@ import invariant from "tiny-invariant";
 import { TOKEN_PROGRAM_ID } from "@solana/spl-token";
 import BN from "bn.js";
 import { ReserveData, ParsedAccount, refreshReserveInstruction } from "@port.finance/port-sdk";
+import { getOrCreateATA } from "@saberhq/token-utils";
 
 
 const PRINCIPLE_MINT_KEY = "principle_mint";
@@ -151,26 +152,50 @@ export class SundialWrapper {
     lendingMarket,
     reserve,
     userLiquidityWallet,
-    userPrincipleTokenWallet,
-    userYieldTokenWallet,
     userAuthority,
   }: {
     amount: BN;
     lendingMarket: PublicKey;
     reserve: ParsedAccount<ReserveData>;
     userLiquidityWallet: PublicKey;
-    userPrincipleTokenWallet: PublicKey;
-    userYieldTokenWallet: PublicKey;
     userAuthority: PublicKey;
   }) {
     invariant(this.sundial, "sundial key not set");
     invariant(this.sundialData, "sundial data not loaded");
 
+    const [principleTokenMint] = (
+      await this.getPrincipleMintAndNounce()
+    );
+    const [yieldTokenMint] = (await this.getYieldMintAndNounce());
+
+    const { address: principleTokenAccount, instruction: ix1 } = await getOrCreateATA(
+      {
+        provider: this.sdk.provider,
+        mint: principleTokenMint,
+      }
+    );
+
+    const { address: yieldTokenAccount, instruction: ix2 } = await getOrCreateATA(
+      {
+        provider: this.sdk.provider,
+        mint: yieldTokenMint,
+      }
+    );
+
+    const ixs = [ix1, ix2].filter(
+      (ix): ix is TransactionInstruction => !!ix
+    );
+    
     const [lendingMarketAuthority] = await PublicKey.findProgramAddress(
       [lendingMarket.toBuffer()],
       PORT_LENDING
     );
-    return new TransactionEnvelope(this.sdk.provider, [
+
+    ixs.push(
+      refreshReserveInstruction(
+        reserve.pubkey,
+        null
+      ),
       this.program.instruction.mintPrincipleTokensAndYieldTokens(
         amount,
         {
@@ -183,8 +208,8 @@ export class SundialWrapper {
           yieldTokenMint: (await this.getYieldMintAndNounce())[0],
 
           userLiquidityWallet: userLiquidityWallet,
-          userPrincipleTokenWallet: userPrincipleTokenWallet,
-          userYieldTokenWallet: userYieldTokenWallet,
+          userPrincipleTokenWallet: principleTokenAccount,
+          userYieldTokenWallet: yieldTokenAccount,
           userAuthority: userAuthority,
           portAccounts: {
             lendingMarket: reserve.data.lendingMarket,
@@ -197,8 +222,11 @@ export class SundialWrapper {
           tokenProgram: TOKEN_PROGRAM_ID,
           clock: SYSVAR_CLOCK_PUBKEY,
         }
-      }),
-    ]);
+      })
+    )
+
+
+    return new TransactionEnvelope(this.sdk.provider, ixs);
   }
 
   public async redeemPrincipleTokens({

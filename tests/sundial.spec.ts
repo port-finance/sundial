@@ -1,5 +1,5 @@
 import { Provider, setProvider, BN } from "@project-serum/anchor";
-import { Keypair, PublicKey, Transaction } from "@solana/web3.js";
+import { Keypair, PublicKey } from "@solana/web3.js";
 import {
   ASSOCIATED_TOKEN_PROGRAM_ID,
   Token,
@@ -17,11 +17,6 @@ import {
   createLendingMarket,
   ReserveState,
 } from "./utils";
-import { refreshReserveInstruction } from "@port.finance/port-sdk";
-import {
-  getATAAddress,
-  getOrCreateATA,
-} from "@saberhq/token-utils";
 import { makeSDK } from "./workspace";
 import {
   ReserveParser,
@@ -29,7 +24,6 @@ import {
   ReserveData,
 } from "@port.finance/port-sdk";
 import { expectTX } from "@saberhq/chai-solana";
-import { SolanaProvider } from "@saberhq/solana-contrib";
 
 describe("sundial", () => {
   setProvider(Provider.local());
@@ -70,18 +64,6 @@ describe("sundial", () => {
     };
     reserveInfo = ReserveParser(raw);
   });
-
-
-  const redeemPortLp = async () => {
-    sundialSDK.setSundial(sundialBase.publicKey);
-
-    await sundialSDK.reloadSundial();
-    const redeemTx = await sundialSDK.redeemPortLp({
-      lendingMarket: lendingMarketKP.publicKey,
-      reserve: reserveInfo,
-    });
-    await redeemTx.confirm();
-  };
 
   const redeemPrinciple = async (amount: BN) => {
     sundialSDK.setSundial(sundialBase.publicKey);
@@ -132,77 +114,6 @@ describe("sundial", () => {
     await trans.confirm();
   };
 
-  const depositAndMint = async (amount: BN) => {
-    sundialSDK.setSundial(sundialBase.publicKey);
-
-    await sundialSDK.reloadSundial();
-
-    const principleTokenMint = (
-      await sundialSDK.getPrincipleMintAndNounce()
-    )[0];
-    const yieldTokenMint = (await sundialSDK.getYieldMintAndNounce())[0];
-
-    const createPrincipleAndYieldTokenWalletsTx = new Transaction();
-
-    const principleAssocTokenAccount = await Token.getAssociatedTokenAddress(
-      ASSOCIATED_TOKEN_PROGRAM_ID,
-      TOKEN_PROGRAM_ID,
-      principleTokenMint,
-      provider.wallet.publicKey
-    );
-
-    const yieldAssocTokenAccount = await Token.getAssociatedTokenAddress(
-      ASSOCIATED_TOKEN_PROGRAM_ID,
-      TOKEN_PROGRAM_ID,
-      yieldTokenMint,
-      provider.wallet.publicKey
-    );
-
-    createPrincipleAndYieldTokenWalletsTx.add(
-      Token.createAssociatedTokenAccountInstruction(
-        ASSOCIATED_TOKEN_PROGRAM_ID,
-        TOKEN_PROGRAM_ID,
-        principleTokenMint,
-        principleAssocTokenAccount,
-        provider.wallet.publicKey,
-        provider.wallet.publicKey
-      ),
-      Token.createAssociatedTokenAccountInstruction(
-        ASSOCIATED_TOKEN_PROGRAM_ID,
-        TOKEN_PROGRAM_ID,
-        yieldTokenMint,
-        yieldAssocTokenAccount,
-        provider.wallet.publicKey,
-        provider.wallet.publicKey
-      )
-    );
-
-    await provider.send(createPrincipleAndYieldTokenWalletsTx);
-
-    const deposit_amount = new BN(amount);
-    const transactionEnvelope = await sundialSDK.mintPrincipleAndYieldTokens({
-      amount: deposit_amount,
-      userLiquidityWallet: liquidityVault,
-      userPrincipleTokenWallet: principleAssocTokenAccount,
-      userYieldTokenWallet: yieldAssocTokenAccount,
-      userAuthority: provider.wallet.publicKey,
-      reserve: reserveInfo,
-      lendingMarket: lendingMarketKP.publicKey,
-    });
-
-    const refreshReserveIx = refreshReserveInstruction(
-      reserveState.address,
-      null
-    );
-
-    const depositTx = new Transaction();
-    depositTx.add(
-      refreshReserveIx,
-      ...transactionEnvelope.instructions
-    );
-    await provider.send(depositTx);
-  };
-
   const sundialBase = Keypair.generate();
   it("Initialize Sundial", async () => {
     const duration = new BN(2); // 2 seconds from now
@@ -213,7 +124,7 @@ describe("sundial", () => {
       liquidityMint: liquidityMint,
       reserve: reserveInfo,
     });
-    expectTX(createTx, "Crate sundial").to.be.fulfilled;
+    await expectTX(createTx, "Crate sundial").to.be.fulfilled;
     sundialSDK.setSundial(sundialBase.publicKey);
     await sundialSDK.reloadSundial();
     const principleMintBump = (await sundialSDK.getPrincipleMintAndNounce())[1];
@@ -228,10 +139,14 @@ describe("sundial", () => {
   });
   it("Mints principle and yield tokens", async () => {
     const amount = new BN(100000);
-    await depositAndMint(amount);
-
-    sundialSDK.setSundial(sundialBase.publicKey);
-    await sundialSDK.reloadSundial();
+    const depositTx = await sundialSDK.mintPrincipleAndYieldTokens({
+      amount,
+      userLiquidityWallet: liquidityVault,
+      userAuthority: provider.wallet.publicKey,
+      reserve: reserveInfo,
+      lendingMarket: lendingMarketKP.publicKey,
+    });
+    await expectTX(depositTx, "mint principle and yield").to.be.fulfilled;
 
     const principleAssocTokenAccount = await Token.getAssociatedTokenAddress(
       ASSOCIATED_TOKEN_PROGRAM_ID,
@@ -264,10 +179,22 @@ describe("sundial", () => {
     expect(principleWallet.amount.toString()).equal(amount.toString());
     expect(yieldWallet.amount.toString()).equal(amount.toString());
   });
-  it("Unable to redeem Port Lp", async () => await sleep(3000));
-  it("Sleep", async () => await sleep(3000));
+  it("Unable to redeem Port Lp before end date", async () => {
+    const redeemTx = await sundialSDK.redeemPortLp({
+      lendingMarket: lendingMarketKP.publicKey,
+      reserve: reserveInfo,
+    });
+    await expectTX(redeemTx, "redeem from Port successful").to.be.rejected;
+  });
+
+  // TODO: test unable to redeem principle token before expiry
   it("Redeem Port Lp", async () => {
-    await redeemPortLp();
+    await sleep(3000)
+    const redeemTx = await sundialSDK.redeemPortLp({
+      lendingMarket: lendingMarketKP.publicKey,
+      reserve: reserveInfo,
+    });
+    await expectTX(redeemTx, "redeem from Port successful").to.be.fulfilled;
     const liquidityWalletPubkey = (
       await sundialSDK.getLiquidityTokenSupplyAndNounce()
     )[0];
