@@ -188,9 +188,8 @@ describe("sundial", () => {
 
     await provider.send(createPrincipleAndYieldTokenWalletsTx);
 
-    const deposit_amount = new BN(amount);
     const transactionEnvelope = await sundialSDK.mintPrincipleAndYieldTokens({
-      amount: deposit_amount,
+      amount,
       userLiquidityWallet: liquidityVault,
       userPrincipleTokenWallet: principleAssocTokenAccount,
       userYieldTokenWallet: yieldAssocTokenAccount,
@@ -265,7 +264,7 @@ describe("sundial", () => {
     expect(principleWallet.amount.toString()).equal(amount.toString());
     expect(yieldWallet.amount.toString()).equal(amount.toString());
   });
-  it("Sleep", async () => await sleep(2000));
+  it("Sleep", async () => await sleep(3000));
   it("Redeem Port Lp", async () => {
     await redeemPortLp();
     const liquidityWalletPubkey = (
