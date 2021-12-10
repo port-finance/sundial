@@ -20,7 +20,7 @@ pub struct InitializeSundial<'info> {
     pub yield_token_mint: Box<Account<'info, Mint>>,
     #[account(init, payer=user, seeds = [sundial.key().as_ref(), b"fee_receiver"], bump = bumps.fee_receiver_bump, token::authority=sundial_authority, token::mint=port_liquidity_mint)]
     pub fee_receiver_wallet: Box<Account<'info, TokenAccount>>,
-    #[account(owner = port_lending_program)]
+    #[account(owner = port_lending_program, constraint = !reserve.last_update.stale)]
     pub reserve: Box<Account<'info, PortReserve>>,
     #[account(address = reserve.liquidity.mint_pubkey @ SundialError::InvalidPortLiquidityMint)]
     pub port_liquidity_mint: Box<Account<'info, Mint>>,

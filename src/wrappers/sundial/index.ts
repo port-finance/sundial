@@ -47,6 +47,10 @@ export class SundialWrapper {
     const [sundialAuthority, authorityBump] = await this.getSundialAuthorityAndNounce();
 
     const tx = new TransactionEnvelope(this.sdk.provider, [
+      refreshReserveInstruction(
+        reserve.pubkey,
+        reserve.data.liquidity.oracleOption === 1 ? reserve.data.liquidity.oraclePubkey : null
+      ),
       this.program.instruction.initialize(
         {
           authorityBump: authorityBump,
