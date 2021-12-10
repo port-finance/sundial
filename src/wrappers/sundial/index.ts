@@ -234,17 +234,27 @@ export class SundialWrapper {
   }
 
   public async redeemPrincipleTokens({
+    amount,
+    owner,
     userLiquidityWallet,
-    userPrincipleTokenWallet,
     userAuthority,
   }: {
+    amount: BN
+    owner: PublicKey;
     userLiquidityWallet: PublicKey;
-    userPrincipleTokenWallet: PublicKey;
     userAuthority: PublicKey;
-  }, amount: BN) {
+  }) {
     invariant(this.sundial, "sundial key not set");
     invariant(this.sundialData, "sundial data not loaded");
 
+    const [principleTokenMint] = await this.getPrincipleMintAndNounce();
+
+    const principleAssocTokenAccount = await Token.getAssociatedTokenAddress(
+      ASSOCIATED_TOKEN_PROGRAM_ID,
+      TOKEN_PROGRAM_ID,
+      principleTokenMint,
+      owner
+    );
     return new TransactionEnvelope(this.sdk.provider, [
       this.program.instruction.redeemPrincipleTokens(amount,{
         accounts: {
@@ -254,7 +264,7 @@ export class SundialWrapper {
           sundialPortLpWallet: (await this.getLPTokenSupplyAndNounce())[0],
           principleTokenMint: (await this.getPrincipleMintAndNounce())[0],
           userLiquidityWallet: userLiquidityWallet,
-          userPrincipleTokenWallet: userPrincipleTokenWallet,
+          userPrincipleTokenWallet: principleAssocTokenAccount,
           userAuthority: userAuthority,
           tokenProgram: TOKEN_PROGRAM_ID,
           clock: SYSVAR_CLOCK_PUBKEY,
