@@ -18,7 +18,7 @@ import {
   createLendingMarket,
   ReserveState,
 } from "./utils";
-import { makeSDK } from "./workspace";
+import { INITIAL_MINT_AMOUNT, makeSDK } from "./workspace";
 import {
   ReserveParser,
   ParsedAccount,
@@ -34,12 +34,16 @@ import { OBLIGATION_DATA_SIZE } from "@port.finance/port-sdk/dist/cjs/structs/Po
 
 const SECONDS_IN_YEAR = 365 * 24 * 60 * 60;
 
+
 describe("sundial with positive APY", () => {
   setProvider(Provider.local());
   const provider = Provider.local();
 
   const sdk = makeSDK();
   const sundialSDK = sdk.sundial;
+  const portDepositAmount = new BN(10_000);
+  const portBorrowAmount = new BN(7_000);
+  const utilizationRate = portBorrowAmount.toNumber() / portDepositAmount.toNumber();
   let lendingMarketKP: Keypair;
   let reserveState: ReserveState;
   let liquidityMint: PublicKey;
@@ -54,7 +58,7 @@ describe("sundial with positive APY", () => {
     lendingMarketKP = await createLendingMarket(provider);
     const [mintPubkey, vaultPubkey] = await createMintAndVault(
       provider,
-      new BN(1000000000000),
+      INITIAL_MINT_AMOUNT,
     );
     liquidityMint = mintPubkey;
     liquidityVault = vaultPubkey;
@@ -105,7 +109,7 @@ describe("sundial with positive APY", () => {
 
     const depositObligationCollateralIxs = await reserveInfo.depositObligationCollateral(
       {
-        amount: new BN(10000),
+        amount: portDepositAmount,
         userCollateralWallet: reserveState.useCollateralAccount,
         obligation: obligationKp.publicKey,
         obligationOwner: provider.wallet.publicKey,
@@ -135,7 +139,7 @@ describe("sundial with positive APY", () => {
     );
     const borrowObligationCollateralIxs = await reserveInfo.borrowObligationLiquidity(
       {
-        amount: new BN(7000),
+        amount: portBorrowAmount,
         userWallet: liquidityVault,
         obligation: obligationKp.publicKey,
         owner: provider.wallet.publicKey,
@@ -149,8 +153,9 @@ describe("sundial with positive APY", () => {
   });
 
   const sundialBase = Keypair.generate();
+  const sundialDuration = 15;
   it("Initialize Sundial", async () => {
-    const duration = new BN(60); // 60 seconds from now
+    const duration = new BN(sundialDuration); // 15 seconds from now
     const createTx = await sundialSDK.createSundial({
       sundialBase: sundialBase,
       owner: provider.wallet.publicKey,
@@ -196,10 +201,122 @@ describe("sundial with positive APY", () => {
       provider,
       principleAssocTokenAccount
     );
-    const depositApy = 2 * 0.7;
-    const interestAccure = amount.toNumber() * depositApy / SECONDS_IN_YEAR;
+    const liquidityWallet = await getTokenAccount(provider, liquidityVault);
+
+    // 200% borrow interest with 0.7 utilization rate.
+    const depositApy = 2 * utilizationRate;
+    const expectedRemainingLiquidiity = INITIAL_MINT_AMOUNT.sub(amount).sub(portDepositAmount).add(portBorrowAmount);
+    const minimumDurationSecs = 10;
+    const interestAccure = amount.toNumber() * minimumDurationSecs * depositApy / SECONDS_IN_YEAR;
     const yieldWallet = await getTokenAccount(provider, yieldAssocTokenAccount);
-    expect(principleWallet.amount.lt(yieldWallet.amount)).to.be.true;
+    expect(liquidityWallet.amount.toString()).equal(expectedRemainingLiquidiity.toString())
+    expect(principleWallet.amount).to.bignumber.lt(yieldWallet.amount);
     expect(yieldWallet.amount.sub(principleWallet.amount).toNumber()).gt(interestAccure);
+    expect(yieldWallet.amount.toString()).equal(amount.toString());
+  });
+
+  it("should fail minting principle and yield tokens", async () => {
+    await sleep(8000)
+    const depositTx = await sundialSDK.mintPrincipleAndYieldTokens({
+      amount: new BN(100),
+      userLiquidityWallet: liquidityVault,
+      userAuthority: provider.wallet.publicKey,
+      reserve: parsedReserve,
+      lendingMarket: lendingMarketKP.publicKey,
+    });
+    await expectTX(depositTx, "fail mint principle and yield").to.be.rejected;
+  });
+
+  it("should redeem yield token with interest", async () => {
+    const principleAssocTokenAccount = await Token.getAssociatedTokenAddress(
+      ASSOCIATED_TOKEN_PROGRAM_ID,
+      TOKEN_PROGRAM_ID,
+      (
+        await sundialSDK.getPrincipleMintAndNounce()
+      )[0],
+      provider.wallet.publicKey
+    );
+
+    const yieldAssocTokenAccount = await Token.getAssociatedTokenAddress(
+      ASSOCIATED_TOKEN_PROGRAM_ID,
+      TOKEN_PROGRAM_ID,
+      (
+        await sundialSDK.getYieldMintAndNounce()
+      )[0],
+      provider.wallet.publicKey
+    );
+    const principleWallet = await getTokenAccount(
+      provider,
+      principleAssocTokenAccount
+    );
+    const yieldWallet = await getTokenAccount(
+      provider,
+      yieldAssocTokenAccount
+    );
+
+    const redeemPortTx = await sundialSDK.redeemPortLp({
+      lendingMarket: lendingMarketKP.publicKey,
+      reserve: parsedReserve,
+    });
+    await expectTX(redeemPortTx, "redeem from Port successful").to.be.fulfilled;
+    const beforeUserLiquidityWallet = await getTokenAccount(
+      provider,
+      liquidityVault
+    );
+    const beforeRedeemAmount = INITIAL_MINT_AMOUNT.sub(amount).sub(portDepositAmount).add(portBorrowAmount);
+    expect(beforeUserLiquidityWallet.amount).to.bignumber.equal(beforeRedeemAmount);
+    const redeemYieldTokenTx = await sundialSDK.redeemYieldTokens(
+      {
+        amount,
+        userLiquidityWallet: liquidityVault,
+        owner: provider.wallet.publicKey,
+        userAuthority: provider.wallet.publicKey,
+      },
+    );
+    await expectTX(redeemYieldTokenTx, "redeem yield token").to.be.fulfilled;
+    const userLiquidityWallet = await getTokenAccount(
+      provider,
+      liquidityVault
+    );
+    expect(userLiquidityWallet.amount).to.bignumber.gt(beforeRedeemAmount);
+    expect(userLiquidityWallet.amount.sub(beforeRedeemAmount)).to.bignumber.equal(yieldWallet.amount.sub(principleWallet.amount))
+  });
+
+  it("should redeem principal token without interest", async () => {
+    const beforeUserLiquidityWallet = await getTokenAccount(
+      provider,
+      liquidityVault
+    );
+    const [principalMint] = await sundialSDK.getPrincipleMintAndNounce();
+    const principalWalletPubkey = await Token.getAssociatedTokenAddress(
+      ASSOCIATED_TOKEN_PROGRAM_ID,
+      TOKEN_PROGRAM_ID,
+      principalMint,
+      provider.wallet.publicKey
+    );
+    const beforeUserPrincipalWallet = await getTokenAccount(
+      provider,
+      principalWalletPubkey
+    );
+
+    const redeemPrincipalTokenTx = await sundialSDK.redeemPrincipleTokens(
+      {
+        amount: beforeUserPrincipalWallet.amount,
+        userLiquidityWallet: liquidityVault,
+        owner: provider.wallet.publicKey,
+        userAuthority: provider.wallet.publicKey,
+      },
+    );
+    await expectTX(redeemPrincipalTokenTx, "Redeem principal tokens").to.be.fulfilled;
+    const userLiquidityWallet = await getTokenAccount(
+      provider,
+      liquidityVault
+    );
+    const userPrincipalTokenWallet = await getTokenAccount(
+      provider,
+      principalWalletPubkey
+    );
+    expect(userLiquidityWallet.amount.sub(beforeUserLiquidityWallet.amount)).to.bignumber.equal(beforeUserPrincipalWallet.amount);
+    expect(userPrincipalTokenWallet.amount).to.bignumber.equal(new BN(0));
   });
 });
