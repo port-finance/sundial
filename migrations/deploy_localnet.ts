@@ -47,7 +47,7 @@ module.exports = async function (provider) {
     account: await provider.connection.getAccountInfo(reserveState.address),
   };
   const reserveInfo = ReserveParser(raw) as ParsedAccount<ReserveData>;
-  const sundialKeypair = await Keypair.generate();
+  const sundialKeypair = Keypair.generate();
   const createTx = await sundialSDK.sundial.createSundial({
     sundialBase: sundialKeypair,
     owner: provider.wallet.publicKey,
