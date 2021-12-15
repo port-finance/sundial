@@ -13,8 +13,9 @@ pub enum SundialError {
     ReserveIsNotRefreshed,
     #[msg("Please call redeem before first redeem of principle or yield")]
     NotRedeemLpYet,
-    #[msg("Not the redeem time yet")]
+
     //305
+    #[msg("Not the redeem time yet")]
     NotEndYet,
     #[msg("Contract already end")]
     AlreadyEnd,
