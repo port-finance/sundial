@@ -23,10 +23,12 @@ pub mod sundial {
     use port_variable_rate_lending_instructions::math::{Rate as PortRate, U128 as PortU128};
     use port_variable_rate_lending_instructions::state::CollateralExchangeRate;
     use solana_maths::{Decimal, TryDiv, TryMul};
+
     pub fn initialize(
         ctx: Context<InitializeSundial>,
         bumps: SundialBumps,
         duration_in_seconds: i64,
+        config: SundialLendingInitConfigParams,
         port_lending_program: Pubkey,
     ) -> ProgramResult {
         let sundial = &mut ctx.accounts.sundial;
@@ -41,6 +43,7 @@ pub mod sundial {
         sundial.end_unix_time_stamp = current_unix_time_stamp
             .checked_add(duration_in_seconds)
             .ok_or(SundialError::MathOverflow)?;
+        sundial.sundial_lending_config = config.into();
         Ok(())
     }
 
@@ -48,10 +51,10 @@ pub mod sundial {
         ctx: Context<DepositAndMintTokens>,
         amount: u64,
     ) -> ProgramResult {
-        let sundial = &ctx.accounts.sundial;
+        let sundial_lending = &ctx.accounts.sundial;
         let existed_lp_amount = ctx.accounts.sundial_port_lp_wallet.amount;
         let start_exchange_rate =
-            CollateralExchangeRate(PortRate(PortU128(sundial.start_exchange_rate)));
+            CollateralExchangeRate(PortRate(PortU128(sundial_lending.start_exchange_rate)));
 
         deposit_reserve(
             ctx.accounts.port_accounts.create_deposit_reserve_context(
@@ -74,6 +77,18 @@ pub mod sundial {
                 .ok_or(SundialError::MathOverflow)?,
         )?;
 
+        let fee = &sundial_lending.sundial_lending_config.lending_fee;
+        let fee_amount = fee.mint_fee(
+            amount,
+            create_mint_to_cpi(
+                ctx.accounts.principle_token_mint.to_account_info(),
+                ctx.accounts.sundial_fee_receiver_wallet.to_account_info(),
+                ctx.accounts.sundial_authority.to_account_info(),
+                seeds!(ctx, authority),
+                ctx.accounts.token_program.to_account_info(),
+            ),
+        )?;
+
         mint_to(
             create_mint_to_cpi(
                 ctx.accounts.principle_token_mint.to_account_info(),
@@ -82,7 +97,9 @@ pub mod sundial {
                 seeds!(ctx, authority),
                 ctx.accounts.token_program.to_account_info(),
             ),
-            principle_mint_amount,
+            principle_mint_amount
+                .checked_sub(fee_amount)
+                .ok_or(SundialError::MathOverflow)?,
         )?;
 
         mint_to(
@@ -96,6 +113,9 @@ pub mod sundial {
             amount,
         )?;
 
+        let cap = &sundial_lending.sundial_lending_config.liquidity_cap;
+
+        cap.check_cap(&mut ctx.accounts.principle_token_mint)?;
         emit!(DidDeposit {
             liquidity_spent: amount,
             principle_token_minted: principle_mint_amount,

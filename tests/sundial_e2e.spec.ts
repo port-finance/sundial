@@ -18,7 +18,7 @@ import {
   createLendingMarket,
   ReserveState,
 } from "./utils";
-import { INITIAL_MINT_AMOUNT, makeSDK } from "./workspace";
+import {INITIAL_MINT_AMOUNT, makeSDK, RESERVE_INIT_LIQUIDITY} from "./workspace";
 import {
   ReserveParser,
   ParsedAccount,
@@ -31,10 +31,11 @@ import {
 } from "@port.finance/port-sdk";
 import { expectTX } from "@saberhq/chai-solana";
 import { OBLIGATION_DATA_SIZE } from "@port.finance/port-sdk/dist/cjs/structs/PortBalanceData";
+import {MAX_U64} from "@saberhq/token-utils";
 
 const SECONDS_IN_YEAR = 365 * 24 * 60 * 60;
-
-
+const FEE_IN_BIPS = 10;
+const LIQUIDITY_CAP = new BN(MAX_U64.toString());
 describe("sundial with positive APY", () => {
   setProvider(Provider.local());
   const provider = Provider.local();
@@ -64,7 +65,7 @@ describe("sundial with positive APY", () => {
     liquidityVault = vaultPubkey;
     reserveState = await createDefaultReserve(
       provider,
-      1,
+      RESERVE_INIT_LIQUIDITY,
       vaultPubkey,
       lendingMarketKP.publicKey,
       {
@@ -83,7 +84,7 @@ describe("sundial with positive APY", () => {
     reserveInfo = await port.getReserve(reserveState.address);
     const depositInstructions = await reserveInfo.depositReserve(
       {
-        amount: new BN(9999),
+        amount: portDepositAmount.sub(RESERVE_INIT_LIQUIDITY),
         userLiquidityWallet: liquidityVault,
         destinationCollateralWallet: reserveState.useCollateralAccount,
         userTransferAuthority: provider.wallet.publicKey
@@ -162,6 +163,8 @@ describe("sundial with positive APY", () => {
       durationInSeconds: duration, // 8th of August 2028
       liquidityMint: liquidityMint,
       reserve: parsedReserve,
+      lendingFeeInBips: FEE_IN_BIPS,
+      liquidityCap: LIQUIDITY_CAP
     });
     await expectTX(createTx, "Create sundial").to.be.fulfilled;
     sundialSDK.setSundial(sundialBase.publicKey);
@@ -169,6 +172,7 @@ describe("sundial with positive APY", () => {
   });
 
   const amount = new BN(100_000_000_000);
+  const fee = amount.muln(FEE_IN_BIPS).divn(10_000);
   it("generate less principle tokens", async () => {
     await sleep(10000);
     const depositTx = await sundialSDK.mintPrincipleAndYieldTokens({
@@ -205,13 +209,13 @@ describe("sundial with positive APY", () => {
 
     // 200% borrow interest with 0.7 utilization rate.
     const depositApy = 2 * utilizationRate;
-    const expectedRemainingLiquidiity = INITIAL_MINT_AMOUNT.sub(amount).sub(portDepositAmount).add(portBorrowAmount);
+    const expectedRemainingLiquidity = INITIAL_MINT_AMOUNT.sub(amount).sub(portDepositAmount).add(portBorrowAmount);
     const minimumDurationSecs = 10;
-    const interestAccure = amount.toNumber() * minimumDurationSecs * depositApy / SECONDS_IN_YEAR;
+    const interestAccrue = amount.toNumber() * minimumDurationSecs * depositApy / SECONDS_IN_YEAR;
     const yieldWallet = await getTokenAccount(provider, yieldAssocTokenAccount);
-    expect(liquidityWallet.amount.toString()).equal(expectedRemainingLiquidiity.toString())
-    expect(principleWallet.amount).to.bignumber.lt(yieldWallet.amount);
-    expect(yieldWallet.amount.sub(principleWallet.amount).toNumber()).gt(interestAccure);
+    expect(liquidityWallet.amount.toString()).equal(expectedRemainingLiquidity.toString())
+    expect(principleWallet.amount.add(fee)).to.bignumber.lt(yieldWallet.amount);
+    expect(yieldWallet.amount.sub(principleWallet.amount).toNumber()).gt(interestAccrue);
     expect(yieldWallet.amount.toString()).equal(amount.toString());
   });
 
@@ -279,7 +283,7 @@ describe("sundial with positive APY", () => {
       liquidityVault
     );
     expect(userLiquidityWallet.amount).to.bignumber.gt(beforeRedeemAmount);
-    expect(userLiquidityWallet.amount.sub(beforeRedeemAmount)).to.bignumber.equal(yieldWallet.amount.sub(principleWallet.amount))
+    expect(userLiquidityWallet.amount.sub(beforeRedeemAmount)).to.bignumber.equal(yieldWallet.amount.sub(principleWallet.amount).sub(fee))
   });
 
   it("should redeem principal token without interest", async () => {

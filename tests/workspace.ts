@@ -12,6 +12,7 @@ import { BN } from "@project-serum/anchor";
 chai.use(chaiSolana);
 
 export const INITIAL_MINT_AMOUNT = new BN(1000000000000);
+export const RESERVE_INIT_LIQUIDITY = new BN(1);
 
 export type Workspace = Programs;
 

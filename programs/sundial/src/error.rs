@@ -21,4 +21,6 @@ pub enum SundialError {
     AlreadyEnd,
     #[msg("MathOverflow")]
     MathOverflow,
+    #[msg("ExceedLiquidityCap")]
+    ExceedLiquidityCap,
 }

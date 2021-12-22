@@ -30,20 +30,25 @@ export class SundialWrapper {
     owner,
     durationInSeconds,
     liquidityMint,
-    reserve
+    reserve,
+    lendingFeeInBips = 0, borrowFeeInBips = 0,
+    liquidityCap
   }: {
     sundialBase: Keypair;
     owner: PublicKey;
     durationInSeconds: BN;
     liquidityMint: PublicKey;
     reserve: ParsedAccount<ReserveData>;
+    lendingFeeInBips: number;
+    borrowFeeInBips: number
+    liquidityCap: BN;
   }): Promise<TransactionEnvelope> {
     this.setSundial(sundialBase.publicKey);
     const [principleTokenMint, principleBump] = await this.getPrincipleMintAndNounce();
     const [yieldTokenMint, yieldBump] = await this.getYieldMintAndNounce();
     const [liquidityTokenSupply, liquidityBump] = await this.getLiquidityTokenSupplyAndNounce();
     const [lpTokenSupply, lpBump] = await this.getLPTokenSupplyAndNounce();
-    const [redeemFeeReceiver, feeReceiverBump] = await this.getFeeReceiverAndNounce();
+    const [redeemFeeReceiver, feeReceiverBump] = await this.getLendingFeeReceiverAndNounce();
     const [sundialAuthority, authorityBump] = await this.getSundialAuthorityAndNounce();
 
     const tx = new TransactionEnvelope(this.sdk.provider, [
@@ -61,6 +66,11 @@ export class SundialWrapper {
           feeReceiverBump: feeReceiverBump
         },
         durationInSeconds,
+        {
+          lendingFee: lendingFeeInBips,
+          borrowFee: borrowFeeInBips,
+          liquidityCap: liquidityCap,
+        },
         PORT_LENDING,
         {
           accounts: {
@@ -144,7 +154,7 @@ export class SundialWrapper {
     );
   }
 
-  public async getFeeReceiverAndNounce(): Promise<[PublicKey, number]> {
+  public async getLendingFeeReceiverAndNounce(): Promise<[PublicKey, number]> {
     return await PublicKey.findProgramAddress(
       [this.sundial.toBuffer(), strToUint8(FEE_RECEIVER_KEY)],
       this.program.programId
@@ -207,10 +217,9 @@ export class SundialWrapper {
           sundial: this.sundial,
           sundialAuthority: (await this.getSundialAuthorityAndNounce())[0],
           sundialPortLpWallet: (await this.getLPTokenSupplyAndNounce())[0],
-
+          sundialFeeReceiverWallet: (await this.getLendingFeeReceiverAndNounce())[0],
           principleTokenMint: (await this.getPrincipleMintAndNounce())[0],
           yieldTokenMint: (await this.getYieldMintAndNounce())[0],
-
           userLiquidityWallet: userLiquidityWallet,
           userPrincipleTokenWallet: principleTokenAccount,
           userYieldTokenWallet: yieldTokenAccount,

@@ -1,10 +1,34 @@
 use crate::error::*;
-use crate::state::{Sundial, SundialBumps};
+use crate::state::{Fee, LiquidityCap, Sundial, SundialBumps, SundialLendingConfig};
 use anchor_lang::prelude::*;
 use anchor_spl::token::{Mint, Token, TokenAccount};
 use port_anchor_adaptor::{Deposit as PortDeposit, PortReserve, Redeem};
+
+#[derive(AnchorSerialize, AnchorDeserialize)]
+pub struct SundialLendingInitConfigParams {
+    pub liquidity_cap: u64,
+    pub lending_fee: u8,
+    pub borrow_fee: u8,
+}
+
+impl From<SundialLendingInitConfigParams> for SundialLendingConfig {
+    fn from(config: SundialLendingInitConfigParams) -> Self {
+        SundialLendingConfig {
+            lending_fee: Fee {
+                bips: config.lending_fee,
+            },
+            borrow_fee: Fee {
+                bips: config.borrow_fee,
+            },
+            liquidity_cap: LiquidityCap {
+                cap: config.liquidity_cap,
+            },
+            ..SundialLendingConfig::default()
+        }
+    }
+}
 #[derive(Accounts, Clone)]
-#[instruction(bumps: SundialBumps, duration_in_seconds: i64, port_lending_program: Pubkey)]
+#[instruction(bumps: SundialBumps, duration_in_seconds: i64, config: SundialLendingInitConfigParams, port_lending_program: Pubkey)]
 pub struct InitializeSundial<'info> {
     #[account(init, payer=user)]
     pub sundial: Account<'info, Sundial>,
@@ -18,7 +42,7 @@ pub struct InitializeSundial<'info> {
     pub principle_token_mint: Box<Account<'info, Mint>>,
     #[account(init, payer=user, seeds = [sundial.key().as_ref(), b"yield_mint"], bump = bumps.yield_mint_bump, mint::authority=sundial_authority, mint::decimals=port_liquidity_mint.decimals)]
     pub yield_token_mint: Box<Account<'info, Mint>>,
-    #[account(init, payer=user, seeds = [sundial.key().as_ref(), b"fee_receiver"], bump = bumps.fee_receiver_bump, token::authority=sundial_authority, token::mint=port_liquidity_mint)]
+    #[account(init, payer=user, seeds = [sundial.key().as_ref(), b"fee_receiver"], bump = bumps.fee_receiver_bump, token::authority=sundial_authority, token::mint=principle_token_mint)]
     pub fee_receiver_wallet: Box<Account<'info, TokenAccount>>,
     #[account(owner = port_lending_program, constraint = !reserve.last_update.stale)]
     pub reserve: Box<Account<'info, PortReserve>>,
@@ -64,6 +88,8 @@ pub struct DepositAndMintTokens<'info> {
     pub sundial_authority: UncheckedAccount<'info>,
     #[account(mut, seeds = [sundial.key().as_ref(), b"lp"], bump = sundial.bumps.port_lp_bump)]
     pub sundial_port_lp_wallet: Box<Account<'info, TokenAccount>>,
+    #[account(mut, seeds = [sundial.key().as_ref(), b"fee_receiver"], bump = sundial.bumps.fee_receiver_bump)]
+    pub sundial_fee_receiver_wallet: Box<Account<'info, TokenAccount>>,
     #[account(mut, seeds = [sundial.key().as_ref(), b"principle_mint"], bump = sundial.bumps.principle_mint_bump)]
     pub principle_token_mint: Box<Account<'info, Mint>>,
     #[account(mut, seeds = [sundial.key().as_ref(), b"yield_mint"], bump = sundial.bumps.yield_mint_bump)]

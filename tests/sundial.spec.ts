@@ -17,13 +17,14 @@ import {
   createLendingMarket,
   ReserveState,
 } from "./utils";
-import { INITIAL_MINT_AMOUNT, makeSDK } from "./workspace";
+import { INITIAL_MINT_AMOUNT, RESERVE_INIT_LIQUIDITY ,makeSDK } from "./workspace";
 import {
   ReserveParser,
   ParsedAccount,
   ReserveData,
 } from "@port.finance/port-sdk";
 import { expectTX } from "@saberhq/chai-solana";
+import {MAX_U64} from "@saberhq/token-utils";
 
 
 describe("sundial", () => {
@@ -47,7 +48,7 @@ describe("sundial", () => {
     liquidityVault = vaultPubkey;
     reserveState = await createDefaultReserve(
       provider,
-      1,
+      RESERVE_INIT_LIQUIDITY,
       vaultPubkey,
       lendingMarketKP.publicKey,
       DEFAULT_RESERVE_CONFIG
@@ -59,7 +60,8 @@ describe("sundial", () => {
     };
     parsedReserve = ReserveParser(raw);
   });
-
+  const FEE_IN_BIPS = 10;
+  const MAX_LIQUIDITY_CAP = new BN(MAX_U64.toString());
   const sundialBase = Keypair.generate();
   it("Initialize Sundial", async () => {
     const duration = new BN(3); // 3 seconds from now
@@ -69,6 +71,8 @@ describe("sundial", () => {
       durationInSeconds: duration, // 8th of August 2028
       liquidityMint: liquidityMint,
       reserve: parsedReserve,
+      lendingFeeInBips: FEE_IN_BIPS,
+      liquidityCap: MAX_LIQUIDITY_CAP
     });
     await expectTX(createTx, "Create sundial").to.be.fulfilled;
     sundialSDK.setSundial(sundialBase.publicKey);
@@ -83,7 +87,8 @@ describe("sundial", () => {
     expect(sundialSDK.sundialData.reserve).eqAddress(parsedReserve.pubkey);
     expect(sundialSDK.sundialData.portLendingProgram).eqAddress(PORT_LENDING);
   });
-  const amount = INITIAL_MINT_AMOUNT.subn(1);
+  const amount = INITIAL_MINT_AMOUNT.sub(RESERVE_INIT_LIQUIDITY);
+  const fee = amount.muln(FEE_IN_BIPS).divn(10_000).addn(1); //Since fee calculation is rounding up, so add one here
   it("Mints principle and yield tokens", async () => {
     const depositTx = await sundialSDK.mintPrincipleAndYieldTokens({
       amount,
@@ -122,11 +127,16 @@ describe("sundial", () => {
     const sundialLpAmount = (await getTokenAccount(provider, sundialLpWallet))
       .amount;
 
+    const sundialLendingFeeWallet = (await sundialSDK.getLendingFeeReceiverAndNounce())[0];
+    const sundialLendingFeeAmount = (await getTokenAccount(provider, sundialLendingFeeWallet)).amount;
+
+
     expect(sundialLpAmount.toString()).not.equal("0");
     expect(sundialLpAmount.toString()).equal(amount.toString());
-    expect(principleWallet.amount.toString()).equal(amount.toString());
+    expect(principleWallet.amount.toString()).equal(amount.sub(fee).toString());
     expect(yieldWallet.amount.toString()).equal(amount.toString());
     expect(liquidityWallet.amount.toString()).equal("0");
+    expect(sundialLendingFeeAmount.toString()).equal(fee.toString());
   });
   it("Unable to redeem Port Lp before end date", async () => {
     const redeemTx = await sundialSDK.redeemPortLp({
@@ -173,10 +183,12 @@ describe("sundial", () => {
     );
     expect(sundialLiquidityWallet.amount.toString()).not.equal("0");
   });
+
   it("Redeem principal tokens", async () => {
+    const redeemAmount = amount.sub(fee);
     const tx = await sundialSDK.redeemPrincipleTokens(
       {
-        amount,
+        amount: redeemAmount,
         owner: provider.wallet.publicKey,
         userLiquidityWallet: liquidityVault,
         userAuthority: provider.wallet.publicKey,
@@ -187,7 +199,7 @@ describe("sundial", () => {
       provider,
       liquidityVault
     );
-    expect(userLiquidityWallet.amount.toString()).equal(amount.toString());
+    expect(userLiquidityWallet.amount.toString()).equal(amount.sub(fee).toString());
   });
   it("Redeem yield token", async () => {
     const redeemTx = await sundialSDK.redeemYieldTokens(
@@ -203,6 +215,6 @@ describe("sundial", () => {
       provider,
       liquidityVault
     );
-    expect(userLiquidityWallet.amount.toString()).equal(amount.toString());
+    expect(userLiquidityWallet.amount.toString()).equal(amount.sub(fee).toString());
   });
 });
