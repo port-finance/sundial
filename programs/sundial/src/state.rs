@@ -8,33 +8,46 @@ use solana_maths::{Decimal, TryDiv, TryMul};
 #[derive(Debug, PartialEq, Default)]
 pub struct Sundial {
     pub bumps: SundialBumps,
+    /// The duration from [Sundial] start to end.
     pub duration_in_seconds: i64,
+    /// The end unix time stamp in seconds.
     pub end_unix_time_stamp: i64,
+    /// The start exchange rate from Port Finance which is defined as how much collateral token the user will receive depositing
+    /// one liquidity token.
     pub start_exchange_rate: [u64; 2],
+    /// The public key of the Port reserve that receives the liquidity.
     pub reserve: Pubkey,
+    /// SPL Token Program
     pub token_program: Pubkey,
+    /// Port Finance Variable Rate Lending Program.
     pub port_lending_program: Pubkey,
+    /// Configuration for the given [Sundial].
     pub sundial_lending_config: SundialLendingConfig,
+    /// Space in case we need to add more data.
     pub _padding: [u64; 22],
 }
 
 #[derive(AnchorDeserialize, AnchorSerialize, Debug, PartialEq, Clone, Default)]
 pub struct SundialLendingConfig {
+    /// Lending fee bips charged in Principal Tokens
     pub lending_fee: Fee,
+    /// Borrowing fee bips charged in Principal Tokens
     pub borrow_fee: Fee,
+    /// Maximum number of principal tokens that can be minted in lamports.
     pub liquidity_cap: LiquidityCap,
+    /// Padding to ensure that the outer u64 padding in [Sundial] is matched.
     pub _config_padding: [u8; 6],
 }
 
 #[derive(AnchorDeserialize, AnchorSerialize, Debug, PartialEq, Clone, Default, Copy)]
 pub struct LiquidityCap {
-    pub cap: u64,
+    pub lamports: u64,
 }
 
 impl LiquidityCap {
-    pub fn check_cap<'info>(&self, principle_mint: &mut Account<'info, Mint>) -> ProgramResult {
+    pub fn check<'info>(&self, principle_mint: &mut Account<'info, Mint>) -> ProgramResult {
         principle_mint.reload()?;
-        if principle_mint.supply > self.cap {
+        if principle_mint.supply > self.lamports {
             Err(SundialError::ExceedLiquidityCap.into())
         } else {
             Ok(())

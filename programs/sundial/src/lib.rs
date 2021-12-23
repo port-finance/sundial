@@ -28,8 +28,8 @@ pub mod sundial {
         ctx: Context<InitializeSundial>,
         bumps: SundialBumps,
         duration_in_seconds: i64,
-        config: SundialLendingInitConfigParams,
         port_lending_program: Pubkey,
+        config: SundialLendingInitConfigParams,
     ) -> ProgramResult {
         let sundial = &mut ctx.accounts.sundial;
         sundial.bumps = bumps;
@@ -113,9 +113,9 @@ pub mod sundial {
             amount,
         )?;
 
-        let cap = &sundial_lending.sundial_lending_config.liquidity_cap;
+        let liquidity_cap = &sundial_lending.sundial_lending_config.liquidity_cap;
 
-        cap.check_cap(&mut ctx.accounts.principle_token_mint)?;
+        liquidity_cap.check(&mut ctx.accounts.principle_token_mint)?;
         emit!(DidDeposit {
             liquidity_spent: amount,
             principle_token_minted: principle_mint_amount,

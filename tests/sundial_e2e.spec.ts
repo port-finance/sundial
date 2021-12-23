@@ -36,7 +36,7 @@ import {MAX_U64} from "@saberhq/token-utils";
 const SECONDS_IN_YEAR = 365 * 24 * 60 * 60;
 const FEE_IN_BIPS = 10;
 const LIQUIDITY_CAP = new BN(MAX_U64.toString());
-describe("sundial with positive APY", () => {
+describe("Sundial Interacting with Port Reserve that has positive APY", () => {
   setProvider(Provider.local());
   const provider = Provider.local();
 

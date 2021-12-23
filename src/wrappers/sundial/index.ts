@@ -66,12 +66,12 @@ export class SundialWrapper {
           feeReceiverBump: feeReceiverBump
         },
         durationInSeconds,
+        PORT_LENDING,
         {
           lendingFee: lendingFeeInBips,
           borrowFee: borrowFeeInBips,
           liquidityCap: liquidityCap,
         },
-        PORT_LENDING,
         {
           accounts: {
             sundial: sundialBase.publicKey,

@@ -6,9 +6,9 @@ use port_anchor_adaptor::{Deposit as PortDeposit, PortReserve, Redeem};
 
 #[derive(AnchorSerialize, AnchorDeserialize)]
 pub struct SundialLendingInitConfigParams {
-    pub liquidity_cap: u64,
     pub lending_fee: u8,
     pub borrow_fee: u8,
+    pub liquidity_cap: u64,
 }
 
 impl From<SundialLendingInitConfigParams> for SundialLendingConfig {
@@ -21,14 +21,14 @@ impl From<SundialLendingInitConfigParams> for SundialLendingConfig {
                 bips: config.borrow_fee,
             },
             liquidity_cap: LiquidityCap {
-                cap: config.liquidity_cap,
+                lamports: config.liquidity_cap,
             },
             ..SundialLendingConfig::default()
         }
     }
 }
 #[derive(Accounts, Clone)]
-#[instruction(bumps: SundialBumps, duration_in_seconds: i64, config: SundialLendingInitConfigParams, port_lending_program: Pubkey)]
+#[instruction(bumps: SundialBumps, duration_in_seconds: i64, port_lending_program: Pubkey, config: SundialLendingInitConfigParams)]
 pub struct InitializeSundial<'info> {
     #[account(init, payer=user)]
     pub sundial: Account<'info, Sundial>,
