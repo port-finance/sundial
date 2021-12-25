@@ -1,4 +1,4 @@
-import { ReserveConfig } from '@port.finance/port-sdk/lib/structs/ReserveData';
+import { ReserveConfig } from '@port.finance/port-sdk/src/structs/ReserveData';
 import { BN } from '@project-serum/anchor';
 import { TOKEN_PROGRAM_ID } from '@solana/spl-token';
 import {PublicKey} from '@solana/web3.js'

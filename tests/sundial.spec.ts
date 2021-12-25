@@ -65,7 +65,7 @@ describe("sundial", () => {
   const sundialBase = Keypair.generate();
   it("Initialize Sundial", async () => {
     const duration = new BN(3); // 3 seconds from now
-    const createTx = await sundialSDK.createSundial({
+    const createTx = await sundialSDK.createSundialLending({
       sundialBase: sundialBase,
       owner: provider.wallet.publicKey,
       durationInSeconds: duration, // 8th of August 2028
@@ -79,13 +79,13 @@ describe("sundial", () => {
     await sundialSDK.reloadSundial();
     const principleMintBump = (await sundialSDK.getPrincipleMintAndNounce())[1];
     const yieldMintBump = (await sundialSDK.getYieldMintAndNounce())[1];
-    expect(sundialSDK.sundialData.durationInSeconds.toString()).equal(
+    expect(sundialSDK.sundialLendingData.durationInSeconds.toString()).equal(
       duration.toString()
     );
-    expect(sundialSDK.sundialData.bumps.principleMintBump).equal(principleMintBump);
-    expect(sundialSDK.sundialData.bumps.yieldMintBump).equal(yieldMintBump);
-    expect(sundialSDK.sundialData.reserve).eqAddress(parsedReserve.pubkey);
-    expect(sundialSDK.sundialData.portLendingProgram).eqAddress(PORT_LENDING);
+    expect(sundialSDK.sundialLendingData.bumps.principleMintBump).equal(principleMintBump);
+    expect(sundialSDK.sundialLendingData.bumps.yieldMintBump).equal(yieldMintBump);
+    expect(sundialSDK.sundialLendingData.reserve).eqAddress(parsedReserve.pubkey);
+    expect(sundialSDK.sundialLendingData.portLendingProgram).eqAddress(PORT_LENDING);
   });
   const amount = INITIAL_MINT_AMOUNT.sub(RESERVE_INIT_LIQUIDITY);
   const fee = amount.muln(FEE_IN_BIPS).divn(10_000).addn(1); //Since fee calculation is rounding up, so add one here

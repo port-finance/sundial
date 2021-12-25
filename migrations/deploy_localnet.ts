@@ -48,7 +48,7 @@ module.exports = async function (provider) {
   };
   const reserveInfo = ReserveParser(raw) as ParsedAccount<ReserveData>;
   const sundialKeypair = Keypair.generate();
-  const createTx = await sundialSDK.sundial.createSundial({
+  const createTx = await sundialSDK.sundial.createSundialLending({
     sundialBase: sundialKeypair,
     owner: provider.wallet.publicKey,
     durationInSeconds: new anchor.BN(8640000), // 8th of August 2028

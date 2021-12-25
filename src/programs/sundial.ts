@@ -3,10 +3,10 @@ import { SundialIDL } from "../idls/sundial";
 
 export type SundialTypes = AnchorTypes<
   SundialIDL, {
-    sundial: SundialData;
+    sundialLending: SundialLendingData;
   }
 >;
 
 type Accounts = SundialTypes["Accounts"];
-export type SundialData = Accounts["Sundial"]
+export type SundialLendingData = Accounts["SundialLending"]
 export type SundialProgram = SundialTypes["Program"];

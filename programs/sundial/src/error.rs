@@ -19,8 +19,22 @@ pub enum SundialError {
     NotEndYet,
     #[msg("Contract already end")]
     AlreadyEnd,
-    #[msg("MathOverflow")]
-    MathOverflow,
     #[msg("ExceedLiquidityCap")]
     ExceedLiquidityCap,
+    #[msg("InvalidOracleConfig")]
+    InvalidOracleConfig,
+    #[msg("Reserve should be passed in")]
+    ReserveNeeded,
+
+    //310
+    #[msg("InvalidMintAmount")]
+    InvalidMintAmount,
+    #[msg("Oracle should be passed in")]
+    OracleNeeded,
+    #[msg("Withdrawing too much collateral")]
+    WithdrawTooMuchCollateral,
+    #[msg("Repaying too much loan")]
+    RepayTooMuchLoan,
+    #[msg("Invalid Liquidation")]
+    InvalidLiquidation,
 }

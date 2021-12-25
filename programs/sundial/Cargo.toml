@@ -2,7 +2,7 @@
 name = "sundial"
 version = "0.1.0"
 description = "Created with Anchor"
-edition = "2018"
+edition = "2021"
 
 [lib]
 crate-type = ["cdylib", "lib"]
@@ -19,5 +19,8 @@ anchor-lang = "0.19.0"
 anchor-spl = "0.19.0"
 port-anchor-adaptor = "0.2.7"
 solana-maths = "0.1.1"
-port-variable-rate-lending-instructions = "0.2.9"
+port-variable-rate-lending-instructions = "0.3.0"
 paste = "1.0.6"
+vipers = "1.5.5"
+pyth-client = "0.2.2"
+itertools = "0.10.1"

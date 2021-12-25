@@ -157,7 +157,7 @@ describe("Sundial Interacting with Port Reserve that has positive APY", () => {
   const sundialDuration = 15;
   it("Initialize Sundial", async () => {
     const duration = new BN(sundialDuration); // 15 seconds from now
-    const createTx = await sundialSDK.createSundial({
+    const createTx = await sundialSDK.createSundialLending({
       sundialBase: sundialBase,
       owner: provider.wallet.publicKey,
       durationInSeconds: duration, // 8th of August 2028

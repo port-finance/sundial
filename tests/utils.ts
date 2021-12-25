@@ -1,5 +1,5 @@
 import { initLendingMarketInstruction, initReserveInstruction } from "@port.finance/port-sdk";
-import { ReserveConfig } from "@port.finance/port-sdk/lib/structs/ReserveData";
+import { ReserveConfig } from "@port.finance/port-sdk/src/structs/ReserveData";
 import { BN, Provider } from "@project-serum/anchor";
 import { getTokenAccount } from "@project-serum/common";
 import { TOKEN_PROGRAM_ID } from "@solana/spl-token";
@@ -7,6 +7,7 @@ import { Keypair, PublicKey } from "@solana/web3.js";
 import { Transaction } from "@solana/web3.js";
 import { SystemProgram } from "@solana/web3.js";
 import { LENDING_MARKET_LEN, PORT_LENDING, RESERVE_LEN, TOKEN_ACCOUNT_LEN, TOKEN_MINT_LEN } from "./constants";
+import {RESERVE_INIT_LIQUIDITY} from "./workspace";
 
 export const createAccount = async (provider: Provider, space: number, owner: PublicKey): Promise<Keypair> => {
   const newAccount = Keypair.generate();
@@ -112,7 +113,7 @@ export async function createDefaultReserve(
     tx.add(
       initReserveInstruction(
         initialLiquidity,
-        1,
+        RESERVE_INIT_LIQUIDITY.toNumber(),
         new BN("100000000000000000000000"),
         config,
         sourceTokenWallet,
