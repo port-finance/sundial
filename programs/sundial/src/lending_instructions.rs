@@ -3,7 +3,7 @@ use crate::state::{Fee, LiquidityCap, SundialLendingConfig};
 use crate::state::{SundialLending, SundialLendingBumps};
 use anchor_lang::prelude::*;
 use anchor_spl::token::{Mint, Token, TokenAccount};
-use port_anchor_adaptor::{Deposit as PortDeposit, PortReserve, Redeem};
+use port_anchor_adaptor::{Deposit as PortDeposit, PortLendingMarket, PortReserve, Redeem};
 
 #[derive(AnchorSerialize, AnchorDeserialize)]
 pub struct SundialLendingInitConfigParams {
@@ -31,31 +31,33 @@ impl From<SundialLendingInitConfigParams> for SundialLendingConfig {
 #[derive(Accounts, Clone)]
 #[instruction(bumps: SundialLendingBumps, duration_in_seconds: i64, port_lending_program: Pubkey, config: SundialLendingInitConfigParams)]
 pub struct InitializeSundialLending<'info> {
-    #[account(init, payer=user)]
+    #[account(init, payer=owner)]
     pub sundial_lending: Account<'info, SundialLending>,
     #[account(seeds=[sundial_lending.key().as_ref(), b"authority"], bump=bumps.authority_bump)]
     pub sundial_lending_authority: UncheckedAccount<'info>,
-    #[account(init, payer=user, seeds = [sundial_lending.key().as_ref(), b"liquidity"], bump = bumps.port_liquidity_bump, token::authority=sundial_lending_authority, token::mint=port_liquidity_mint)]
+    #[account(init, payer=owner, seeds = [sundial_lending.key().as_ref(), b"liquidity"], bump = bumps.port_liquidity_bump, token::authority=sundial_lending_authority, token::mint=port_liquidity_mint)]
     pub sundial_port_liquidity_wallet: Box<Account<'info, TokenAccount>>,
-    #[account(init, payer=user, seeds = [sundial_lending.key().as_ref(), b"lp"], bump = bumps.port_lp_bump, token::authority=sundial_lending_authority, token::mint=port_lp_mint)]
+    #[account(init, payer=owner, seeds = [sundial_lending.key().as_ref(), b"lp"], bump = bumps.port_lp_bump, token::authority=sundial_lending_authority, token::mint=port_lp_mint)]
     pub sundial_port_lp_wallet: Box<Account<'info, TokenAccount>>,
-    #[account(init, payer=user, seeds = [sundial_lending.key().as_ref(), b"principle_mint"], bump = bumps.principle_mint_bump, mint::authority=sundial_lending_authority, mint::decimals=port_liquidity_mint.decimals)]
+    #[account(init, payer=owner, seeds = [sundial_lending.key().as_ref(), b"principle_mint"], bump = bumps.principle_mint_bump, mint::authority=sundial_lending_authority, mint::decimals=port_liquidity_mint.decimals)]
     pub principle_token_mint: Box<Account<'info, Mint>>,
-    #[account(init, payer=user, seeds = [sundial_lending.key().as_ref(), b"yield_mint"], bump = bumps.yield_mint_bump, mint::authority=sundial_lending_authority, mint::decimals=port_liquidity_mint.decimals)]
+    #[account(init, payer=owner, seeds = [sundial_lending.key().as_ref(), b"yield_mint"], bump = bumps.yield_mint_bump, mint::authority=sundial_lending_authority, mint::decimals=port_liquidity_mint.decimals)]
     pub yield_token_mint: Box<Account<'info, Mint>>,
-    #[account(init, payer=user, seeds = [sundial_lending.key().as_ref(), b"fee_receiver"], bump = bumps.fee_receiver_bump, token::authority=sundial_lending_authority, token::mint=principle_token_mint)]
+    #[account(init, payer=owner, seeds = [sundial_lending.key().as_ref(), b"fee_receiver"], bump = bumps.fee_receiver_bump, token::authority=sundial_lending_authority, token::mint=principle_token_mint)]
     pub fee_receiver_wallet: Box<Account<'info, TokenAccount>>,
-    #[account(owner = port_lending_program, constraint = !reserve.last_update.stale)]
+    #[account(owner = port_lending_program, has_one=lending_market,
+        constraint = !reserve.last_update.stale)]
     pub reserve: Box<Account<'info, PortReserve>>,
+    #[account(has_one=owner)]
+    pub lending_market: Box<Account<'info, PortLendingMarket>>,
     #[account(address = reserve.liquidity.mint_pubkey @ SundialError::InvalidPortLiquidityMint)]
     pub port_liquidity_mint: Box<Account<'info, Mint>>,
     #[account(address = reserve.collateral.mint_pubkey @ SundialError::InvalidPortLpMint)]
     pub port_lp_mint: Box<Account<'info, Mint>>,
-
     pub token_program: Program<'info, Token>,
     pub system_program: Program<'info, System>,
     #[account(mut)]
-    pub user: Signer<'info>,
+    pub owner: Signer<'info>,
     pub rent: Sysvar<'info, Rent>,
     #[account(constraint = duration_in_seconds > 0 @ SundialError::EndTimeTooEarly)]
     pub clock: Sysvar<'info, Clock>,

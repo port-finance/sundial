@@ -125,12 +125,12 @@ pub fn get_oracle_price(oracle: &AccountInfo, clock: &Clock) -> Result<Decimal, 
 pub fn update_or_insert<T, F, M, D>(
     elems: &mut Vec<T>,
     check: F,
-    mut mutate: M,
+    mutate: M,
     default: D,
 ) -> ProgramResult
 where
     F: Fn(&&mut T) -> bool,
-    M: FnMut(&mut T) -> ProgramResult,
+    M: Fn(&mut T) -> ProgramResult,
     D: Fn() -> Result<T, ProgramError>,
 {
     let mut iter = elems.iter_mut();

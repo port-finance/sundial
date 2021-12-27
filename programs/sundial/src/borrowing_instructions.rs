@@ -4,25 +4,28 @@ use crate::state::{
 };
 use anchor_lang::prelude::*;
 use anchor_spl::token::{Mint, Token, TokenAccount};
-use port_anchor_adaptor::PortReserve;
+use port_anchor_adaptor::{PortLendingMarket, PortReserve};
 
 #[derive(Accounts, Clone)]
 #[instruction(bumps: SundialBorrowingBumps, config: InitSundialBorrowingConfigParams)]
 pub struct InitializeSundialBorrowing<'info> {
-    #[account(init, payer=user)]
+    #[account(init, payer=owner)]
     pub sundial_borrowing: Account<'info, SundialBorrowing>,
     #[account(seeds=[sundial_borrowing.key().as_ref(), b"authority"], bump=bumps.authority_bump)]
     pub sundial_borrowing_authority: UncheckedAccount<'info>,
-    #[account(init, payer=user, seeds = [sundial_borrowing.key().as_ref(), b"lp"], bump = bumps.port_lp_bump, token::authority=sundial_borrowing_authority, token::mint=port_lp_mint)]
+    #[account(init, payer=owner, seeds = [sundial_borrowing.key().as_ref(), b"lp"], bump = bumps.port_lp_bump, token::authority=sundial_borrowing_authority, token::mint=port_lp_mint)]
     pub sundial_port_lp_wallet: Box<Account<'info, TokenAccount>>,
+    #[account(has_one=lending_market)]
     pub port_collateral_reserve: Box<Account<'info, PortReserve>>,
+    #[account(has_one=owner)]
+    pub lending_market: Box<Account<'info, PortLendingMarket>>,
     #[account(address = port_collateral_reserve.collateral.mint_pubkey)]
     pub port_lp_mint: Box<Account<'info, Mint>>,
     pub token_program: Program<'info, Token>,
     pub system_program: Program<'info, System>,
     pub rent: Sysvar<'info, Rent>,
     #[account(mut)]
-    pub user: Signer<'info>,
+    pub owner: Signer<'info>,
 }
 
 #[derive(AnchorDeserialize, AnchorSerialize, Debug, PartialEq, Clone, Default)]
