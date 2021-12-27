@@ -7,6 +7,7 @@ import { ASSOCIATED_TOKEN_PROGRAM_ID, Token, TOKEN_PROGRAM_ID } from "@solana/sp
 import BN from "bn.js";
 import { ReserveData, ParsedAccount, refreshReserveInstruction } from "@port.finance/port-sdk";
 import { getOrCreateATA } from "@saberhq/token-utils";
+import { utils } from "@project-serum/anchor";
 
 
 const PRINCIPLE_MINT_KEY = "principle_mint";
@@ -16,7 +17,7 @@ const LP_KEY = "lp";
 const FEE_RECEIVER_KEY = "fee_receiver";
 const AUTHORITY = "authority"
 
-export class SundialWrapper {
+export class SundialLendingWrapper {
   public readonly program: SundialProgram;
   public sundialLending?: PublicKey;
   public sundialLendingData?: SundialLendingData;
@@ -112,21 +113,21 @@ export class SundialWrapper {
 
   public async getSundialAccountAndNounce(name: string): Promise<[PublicKey, number]> {
     return await PublicKey.findProgramAddress(
-      [strToUint8(name)],
+      [utils.bytes.utf8.encode(name)],
       this.program.programId
     );
   }
 
   public async getSundialAuthorityAndNounce(): Promise<[PublicKey, number]> {
     return await PublicKey.findProgramAddress(
-      [this.sundialLending.toBuffer(), strToUint8(AUTHORITY)],
+      [this.sundialLending.toBuffer(), utils.bytes.utf8.encode(AUTHORITY)],
       this.program.programId
     );
   }
 
   public async getPrincipleMintAndNounce(): Promise<[PublicKey, number]> {
     return await PublicKey.findProgramAddress(
-      [this.sundialLending.toBuffer(), strToUint8(PRINCIPLE_MINT_KEY) ],
+      [this.sundialLending.toBuffer(), utils.bytes.utf8.encode(PRINCIPLE_MINT_KEY) ],
       this.program.programId
     );
   }
@@ -134,28 +135,28 @@ export class SundialWrapper {
 
   public async getYieldMintAndNounce(): Promise<[PublicKey, number]> {
     return await PublicKey.findProgramAddress(
-      [this.sundialLending.toBuffer(), strToUint8(YIELD_MINT_KEY)],
+      [this.sundialLending.toBuffer(), utils.bytes.utf8.encode(YIELD_MINT_KEY)],
       this.program.programId
     );
   }
 
   public async getLiquidityTokenSupplyAndNounce(): Promise<[PublicKey, number]> {
     return await PublicKey.findProgramAddress(
-      [this.sundialLending.toBuffer(), strToUint8(LIQUIDITY_KEY)],
+      [this.sundialLending.toBuffer(), utils.bytes.utf8.encode(LIQUIDITY_KEY)],
       this.program.programId
     );
   }
 
   public async getLPTokenSupplyAndNounce(): Promise<[PublicKey, number]> {
     return await PublicKey.findProgramAddress(
-      [this.sundialLending.toBuffer(), strToUint8(LP_KEY)],
+      [this.sundialLending.toBuffer(), utils.bytes.utf8.encode(LP_KEY)],
       this.program.programId
     );
   }
 
   public async getLendingFeeReceiverAndNounce(): Promise<[PublicKey, number]> {
     return await PublicKey.findProgramAddress(
-      [this.sundialLending.toBuffer(), strToUint8(FEE_RECEIVER_KEY)],
+      [this.sundialLending.toBuffer(), utils.bytes.utf8.encode(FEE_RECEIVER_KEY)],
       this.program.programId
     );
   }
@@ -366,10 +367,6 @@ export class SundialWrapper {
     return new TransactionEnvelope(this.sdk.provider, ixs);
   }
 
-}
-
-const strToUint8 = (str: string) => {
-  return Uint8Array.from(str.split("").map(c => c.charCodeAt(0)))
 }
 
 const PORT_LENDING = new PublicKey("Port7uDYB3wk6GJAw4KT1WpTeMtSu9bTcChBHkX2LfR");

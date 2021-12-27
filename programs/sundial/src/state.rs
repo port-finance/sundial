@@ -152,14 +152,14 @@ impl LiquidationConfig {
 
 #[account]
 #[derive(Debug, PartialEq)]
-pub struct SundialBorrowingProfile {
+pub struct SundialProfile {
     pub user: Pubkey,
     pub last_update: u64,
     pub collaterals: Vec<SundialBorrowingCollateral>,
     pub loans: Vec<SundialBorrowingLoan>,
     pub _padding: [u64; 32],
 }
-impl SundialBorrowingProfile {
+impl SundialProfile {
     #[inline(always)]
     pub fn get_borrowing_power(&self) -> Result<Decimal, ProgramError> {
         self.collaterals
@@ -216,9 +216,9 @@ impl SundialBorrowingProfile {
         (&mut self.collaterals, &mut self.loans)
     }
 }
-impl Default for SundialBorrowingProfile {
+impl Default for SundialProfile {
     fn default() -> Self {
-        SundialBorrowingProfile {
+        SundialProfile {
             user: Default::default(),
             last_update: 0,
             collaterals: vec![SundialBorrowingCollateral::default(); 1],

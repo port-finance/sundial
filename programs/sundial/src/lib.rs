@@ -239,7 +239,7 @@ pub mod sundial {
     pub fn refresh_borrowing_profile<'info>(
         ctx: Context<'_, '_, '_, 'info, RefreshSundialBorrowingProfile<'info>>,
     ) -> ProgramResult {
-        let borrowing_profile = &mut ctx.accounts.sundial_borrowing_profile;
+        let borrowing_profile = &mut ctx.accounts.sundial_profile;
         borrowing_profile.last_update = ctx.accounts.clock.slot;
 
         let reserves_and_oracles = ctx.remaining_accounts;
@@ -278,7 +278,7 @@ pub mod sundial {
             amount
         ));
 
-        let borrowing_profile = &mut ctx.accounts.sundial_borrowing_profile;
+        let borrowing_profile = &mut ctx.accounts.sundial_profile;
         let reserve_pubkey = ctx.accounts.sundial_borrowing.port_collateral_reserve;
 
         log_then_prop_err!(update_or_insert(
@@ -324,7 +324,7 @@ pub mod sundial {
             amount
         ));
 
-        let borrowing_profile = &mut ctx.accounts.sundial_borrowing_profile;
+        let borrowing_profile = &mut ctx.accounts.sundial_profile;
         let reserve_pubkey = ctx.accounts.sundial_borrowing.port_collateral_reserve;
 
         let collateral = vipers::unwrap_opt!(
@@ -366,7 +366,7 @@ pub mod sundial {
             amount
         ));
 
-        let borrowing_profile = &mut ctx.accounts.sundial_borrowing_profile;
+        let borrowing_profile = &mut ctx.accounts.sundial_profile;
         let loan_mint = ctx.accounts.sundial_lending_principle_mint.key();
         log_then_prop_err!(update_or_insert(
             &mut borrowing_profile.loans,
@@ -422,7 +422,7 @@ pub mod sundial {
             ],
             ctx.program_id
         ));
-        let borrowing_profile = &mut ctx.accounts.sundial_borrowing_profile;
+        let borrowing_profile = &mut ctx.accounts.sundial_profile;
         let loan = vipers::unwrap_opt!(
             borrowing_profile
                 .loans
@@ -455,12 +455,12 @@ pub mod sundial {
         Ok(())
     }
 
-    pub fn liquidate_sundial_borrowing_profile(
-        ctx: Context<LiquidateSundialBorrowingProfile>,
+    pub fn liquidate_sundial_profile(
+        ctx: Context<LiquidateSundialProfile>,
         withdraw_collateral_reserve: Pubkey,
     ) -> ProgramResult {
         let user_wallet = &ctx.accounts.user_repay_liquidity_wallet;
-        let borrowing_profile = &mut ctx.accounts.sundial_borrowing_profile;
+        let borrowing_profile = &mut ctx.accounts.sundial_profile;
 
         let current_ts = ctx.accounts.clock.unix_timestamp;
         let no_overtime_loans = !borrowing_profile
@@ -546,7 +546,7 @@ pub mod sundial {
         ctx: Context<CreateAndInitSundialBorrowingProfile>,
         _bump: u8,
     ) -> ProgramResult {
-        let profile = &mut ctx.accounts.sundial_borrowing_profile;
+        let profile = &mut ctx.accounts.sundial_profile;
         profile.user = ctx.accounts.user.key();
         Ok(())
     }

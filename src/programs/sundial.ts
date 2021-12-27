@@ -8,5 +8,7 @@ export type SundialTypes = AnchorTypes<
 >;
 
 type Accounts = SundialTypes["Accounts"];
-export type SundialLendingData = Accounts["SundialLending"]
+export type SundialLendingData = Accounts["SundialLending"];
+export type SundialBorrowingData = Accounts["SundialBorrowing"];
+export type SundialProfileData = Accounts["SundialProfile"];
 export type SundialProgram = SundialTypes["Program"];

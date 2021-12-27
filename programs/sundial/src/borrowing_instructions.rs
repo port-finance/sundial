@@ -1,6 +1,6 @@
 use crate::state::{
     LiquidationConfig, LiquidityCap, SundialBorrowing, SundialBorrowingBumps,
-    SundialBorrowingConfig, SundialBorrowingProfile, SundialLending, LTV,
+    SundialBorrowingConfig, SundialLending, SundialProfile, LTV,
 };
 use anchor_lang::prelude::*;
 use anchor_spl::token::{Mint, Token, TokenAccount};
@@ -52,7 +52,7 @@ impl From<InitSundialBorrowingConfigParams> for SundialBorrowingConfig {
 #[instruction()]
 pub struct RefreshSundialBorrowingProfile<'info> {
     #[account(mut)]
-    pub sundial_borrowing_profile: Box<Account<'info, SundialBorrowingProfile>>,
+    pub sundial_profile: Box<Account<'info, SundialProfile>>,
     pub clock: Sysvar<'info, Clock>,
 }
 //optional reserves and oracles
@@ -61,7 +61,7 @@ pub struct RefreshSundialBorrowingProfile<'info> {
 #[instruction(amount:u64)]
 pub struct DepositSundialBorrowingCollateral<'info> {
     #[account(mut, has_one=user)]
-    pub sundial_borrowing_profile: Box<Account<'info, SundialBorrowingProfile>>, //refreshed
+    pub sundial_profile: Box<Account<'info, SundialProfile>>, //refreshed
     pub sundial_borrowing: Account<'info, SundialBorrowing>,
     #[account(mut, seeds = [sundial_borrowing.key().as_ref(), b"lp"], bump = sundial_borrowing.bumps.port_lp_bump)]
     pub sundial_borrowing_port_lp_wallet: Account<'info, TokenAccount>,
@@ -76,7 +76,7 @@ pub struct DepositSundialBorrowingCollateral<'info> {
 #[instruction(amount:u64)]
 pub struct MintSundialBorrowingLiquidity<'info> {
     #[account(mut, has_one=user)]
-    pub sundial_borrowing_profile: Box<Account<'info, SundialBorrowingProfile>>,
+    pub sundial_profile: Box<Account<'info, SundialProfile>>,
     pub sundial_lending: Account<'info, SundialLending>,
     #[account(seeds=[sundial_lending.key().as_ref(), b"authority"], bump=sundial_lending.bumps.authority_bump)]
     pub sundial_lending_authority: UncheckedAccount<'info>,
@@ -93,7 +93,7 @@ pub struct MintSundialBorrowingLiquidity<'info> {
 #[instruction(amount: u64)]
 pub struct WithdrawSundialBorrowingCollateral<'info> {
     #[account(mut, has_one=user)]
-    pub sundial_borrowing_profile: Box<Account<'info, SundialBorrowingProfile>>, //refreshed
+    pub sundial_profile: Box<Account<'info, SundialProfile>>, //refreshed
     pub sundial_borrowing: Account<'info, SundialBorrowing>,
     #[account(seeds=[sundial_borrowing.key().as_ref(), b"authority"], bump=sundial_borrowing.bumps.authority_bump)]
     pub sundial_borrowing_authority: UncheckedAccount<'info>,
@@ -109,7 +109,7 @@ pub struct WithdrawSundialBorrowingCollateral<'info> {
 #[instruction(amount:u64)]
 pub struct RepaySundialBorrowingLiquidity<'info> {
     #[account(mut, has_one=user)]
-    pub sundial_borrowing_profile: Box<Account<'info, SundialBorrowingProfile>>,
+    pub sundial_profile: Box<Account<'info, SundialProfile>>,
     pub sundial_lending: Account<'info, SundialLending>,
     #[account(mut, seeds = [sundial_lending.key().as_ref(), b"liquidity"], bump = sundial_lending.bumps.port_liquidity_bump)]
     pub sundial_lending_liquidity_wallet: Account<'info, TokenAccount>,
@@ -122,9 +122,9 @@ pub struct RepaySundialBorrowingLiquidity<'info> {
 
 #[derive(Accounts, Clone)]
 #[instruction(withdraw_collateral_reserve: Pubkey)]
-pub struct LiquidateSundialBorrowingProfile<'info> {
+pub struct LiquidateSundialProfile<'info> {
     #[account(mut)]
-    pub sundial_borrowing_profile: Box<Account<'info, SundialBorrowingProfile>>,
+    pub sundial_profile: Box<Account<'info, SundialProfile>>,
     #[account(mut)]
     pub user_repay_liquidity_wallet: Account<'info, TokenAccount>,
     #[account(mut)]
@@ -140,8 +140,8 @@ pub struct LiquidateSundialBorrowingProfile<'info> {
 #[derive(Accounts, Clone)]
 #[instruction(bump: u8)]
 pub struct CreateAndInitSundialBorrowingProfile<'info> {
-    #[account(init, payer=user, seeds=[user.key().as_ref(), b"borrowing_profile"], bump=bump)]
-    pub sundial_borrowing_profile: Box<Account<'info, SundialBorrowingProfile>>,
+    #[account(init, payer=user, seeds=[user.key().as_ref(), b"profile"], bump=bump)]
+    pub sundial_profile: Box<Account<'info, SundialProfile>>,
     #[account(mut)]
     pub user: Signer<'info>,
     pub system_program: Program<'info, System>,

@@ -8,7 +8,7 @@ import {
 import { ConfirmOptions, Signer } from "@solana/web3.js";
 import mapValues from "lodash.mapvalues";
 import { Address, Program, Provider as AnchorProvider, Idl } from "@project-serum/anchor";
-import { SundialWrapper } from "./wrappers/sundial";
+import { SundialLendingWrapper } from "./wrappers/sundialLending";
 
 export class SundialSDK {
   constructor(
@@ -74,7 +74,7 @@ export class SundialSDK {
     return new SundialSDK(provider, programs);
   }
 
-  get sundial(): SundialWrapper {
-    return new SundialWrapper(this);
+  get sundial(): SundialLendingWrapper {
+    return new SundialLendingWrapper(this);
   }
 }
