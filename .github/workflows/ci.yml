@@ -24,30 +24,7 @@ jobs:
         run: | 
           cargo fmt -- --check
           cargo check
-  ts:
-    runs-on: ubuntu-latest
-    steps:
-      - uses: actions/checkout@v2
-      - uses: actions/setup-node@v2
-        with:
-          node-version: '16'
-      - name: Install Rust nightly
-        uses: actions-rs/toolchain@v1
-        with:
-          components: rustfmt, clippy
-      - name: Cache Rust dependencies
-        uses: Swatinem/rust-cache@v1
-      - name: Install Anchor
-        run: |
-          sudo apt-get update && sudo apt-get install -y pkg-config build-essential libudev-dev
-          cargo install --git https://github.com/project-serum/anchor --tag v0.18.0 anchor-cli --locked
-      - name: Lint typescript
-        run: |
-          yarn install
-          yarn lint:ci
-          yarn idl:generate
-          yarn build
-  tests:
+  lint-ts-and-run-tests:
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v2
@@ -56,10 +33,24 @@ jobs:
           node-version: '16'
       - run: yarn install
       - run: yarn add -g @project-serum/anchor mocha
-      - name: Install Solana CLI
+      # Install Solana
+      - name: Cache Solana binaries
+        id: solana-cache
+        uses: actions/cache@v2
+        with:
+          path: |
+            ~/.cache/solana
+            ~/.local/share/solana/install
+          key: ${{ runner.os }}-${{ env.SOLANA_VERSION }}
+      - name: Install Solana
+        if: steps.solana-cache.outputs.cache-hit != 'true'
         run: |
           sh -c "$(curl -sSfL https://release.solana.com/v1.9.1/install)"
-          echo "PATH=$HOME/.local/share/solana/install/active_release/bin:$PATH" >> $GITHUB_ENV
+      - name: Setup Solana Path
+        run: |
+          echo "$HOME/.local/share/solana/install/active_release/bin" >> $GITHUB_PATH
+          export PATH="/home/runner/.local/share/solana/install/active_release/bin:$PATH"
+          solana --version
       - name: Install Rust nightly
         uses: actions-rs/toolchain@v1
         with:
@@ -71,8 +62,14 @@ jobs:
       - name: Install Anchor
         run: |
           sudo apt-get update && sudo apt-get install -y pkg-config build-essential libudev-dev
-          cargo install --git https://github.com/project-serum/anchor --tag v0.18.2 anchor-cli --locked
+          npm i -g @project-serum/anchor-cli
       - name: Build Self
         run: anchor build
-      - run: yarn idl:generate
-      - run: yarn test:e2e
+      - name: Generate IDL
+        run: yarn idl:generate
+      - name: Lint Ts
+        run: |
+          yarn lint:ci
+          yarn build
+      - name: Run E2E Tests
+        run: yarn test:e2e
