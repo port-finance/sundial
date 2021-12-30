@@ -1,6 +1,6 @@
 import { Keypair, PublicKey, SystemProgram, SYSVAR_CLOCK_PUBKEY, SYSVAR_RENT_PUBKEY, TransactionInstruction } from "@solana/web3.js";
 import { TransactionEnvelope } from "@saberhq/solana-contrib";
-import { SundialLendingData, SundialProgram } from "../../programs/sundial";
+import { SundialData, SundialProgram } from "../../programs/sundial";
 import { SundialSDK } from "../../sdk";
 import invariant from "tiny-invariant";
 import { ASSOCIATED_TOKEN_PROGRAM_ID, Token, TOKEN_PROGRAM_ID } from "@solana/spl-token";
@@ -17,10 +17,10 @@ const LP_KEY = "lp";
 const FEE_RECEIVER_KEY = "fee_receiver";
 const AUTHORITY = "authority"
 
-export class SundialLendingWrapper {
+export class SundialWrapper {
   public readonly program: SundialProgram;
-  public sundialLending?: PublicKey;
-  public sundialLendingData?: SundialLendingData;
+  public sundial?: PublicKey;
+  public sundialData?: SundialData;
 
   constructor(public readonly sdk: SundialSDK) {
     this.program = sdk.programs.Sundial;
@@ -56,7 +56,7 @@ export class SundialLendingWrapper {
         reserve.pubkey,
         reserve.data.liquidity.oracleOption === 1 ? reserve.data.liquidity.oraclePubkey : null
       ),
-      this.program.instruction.initializeLending(
+      this.program.instruction.initializeSundial(
         {
           authorityBump: authorityBump,
           portLiquidityBump: liquidityBump,
@@ -74,8 +74,8 @@ export class SundialLendingWrapper {
         },
         {
           accounts: {
-            sundialLending: sundialBase.publicKey,
-            sundialLendingAuthority: sundialAuthority,
+            sundial: sundialBase.publicKey,
+            sundialAuthority: sundialAuthority,
             sundialPortLiquidityWallet: liquidityTokenSupply,
             sundialPortLpWallet: lpTokenSupply,
             principleTokenMint: principleTokenMint,
@@ -97,19 +97,19 @@ export class SundialLendingWrapper {
   }
 
   public setSundial(key: PublicKey): void {
-    this.sundialLending = key;
+    this.sundial = key;
   }
 
   public async reloadSundial(): Promise<void> {
-    invariant(this.sundialLending, "sundial key not set");
-    this.sundialLendingData = await this.program.account.sundialLending.fetch(
-      this.sundialLending
+    invariant(this.sundial, "sundial key not set");
+    this.sundialData = await this.program.account.sundial.fetch(
+      this.sundial
     );
   }
 
   public getSundial(): PublicKey {
-    invariant(this.sundialLending, "sundial key not set");
-    return this.sundialLending;
+    invariant(this.sundial, "sundial key not set");
+    return this.sundial;
   }
 
   public async getSundialAccountAndNounce(name: string): Promise<[PublicKey, number]> {
@@ -121,14 +121,14 @@ export class SundialLendingWrapper {
 
   public async getSundialAuthorityAndNounce(): Promise<[PublicKey, number]> {
     return await PublicKey.findProgramAddress(
-      [this.sundialLending.toBuffer(), utils.bytes.utf8.encode(AUTHORITY)],
+      [this.sundial.toBuffer(), utils.bytes.utf8.encode(AUTHORITY)],
       this.program.programId
     );
   }
 
   public async getPrincipleMintAndNounce(): Promise<[PublicKey, number]> {
     return await PublicKey.findProgramAddress(
-      [this.sundialLending.toBuffer(), utils.bytes.utf8.encode(PRINCIPLE_MINT_KEY) ],
+      [this.sundial.toBuffer(), utils.bytes.utf8.encode(PRINCIPLE_MINT_KEY) ],
       this.program.programId
     );
   }
@@ -136,28 +136,28 @@ export class SundialLendingWrapper {
 
   public async getYieldMintAndNounce(): Promise<[PublicKey, number]> {
     return await PublicKey.findProgramAddress(
-      [this.sundialLending.toBuffer(), utils.bytes.utf8.encode(YIELD_MINT_KEY)],
+      [this.sundial.toBuffer(), utils.bytes.utf8.encode(YIELD_MINT_KEY)],
       this.program.programId
     );
   }
 
   public async getLiquidityTokenSupplyAndNounce(): Promise<[PublicKey, number]> {
     return await PublicKey.findProgramAddress(
-      [this.sundialLending.toBuffer(), utils.bytes.utf8.encode(LIQUIDITY_KEY)],
+      [this.sundial.toBuffer(), utils.bytes.utf8.encode(LIQUIDITY_KEY)],
       this.program.programId
     );
   }
 
   public async getLPTokenSupplyAndNounce(): Promise<[PublicKey, number]> {
     return await PublicKey.findProgramAddress(
-      [this.sundialLending.toBuffer(), utils.bytes.utf8.encode(LP_KEY)],
+      [this.sundial.toBuffer(), utils.bytes.utf8.encode(LP_KEY)],
       this.program.programId
     );
   }
 
   public async getLendingFeeReceiverAndNounce(): Promise<[PublicKey, number]> {
     return await PublicKey.findProgramAddress(
-      [this.sundialLending.toBuffer(), utils.bytes.utf8.encode(FEE_RECEIVER_KEY)],
+      [this.sundial.toBuffer(), utils.bytes.utf8.encode(FEE_RECEIVER_KEY)],
       this.program.programId
     );
   }
@@ -175,8 +175,8 @@ export class SundialLendingWrapper {
     userLiquidityWallet: PublicKey;
     userAuthority: PublicKey;
   }) {
-    invariant(this.sundialLending, "sundial key not set");
-    invariant(this.sundialLendingData, "sundial data not loaded");
+    invariant(this.sundial, "sundial key not set");
+    invariant(this.sundialData, "sundial data not loaded");
 
     const [principleTokenMint] = (
       await this.getPrincipleMintAndNounce()
@@ -215,8 +215,8 @@ export class SundialLendingWrapper {
         amount,
         {
         accounts: {
-          sundialLending: this.sundialLending,
-          sundialLendingAuthority: (await this.getSundialAuthorityAndNounce())[0],
+          sundial: this.sundial,
+          sundialAuthority: (await this.getSundialAuthorityAndNounce())[0],
           sundialPortLpWallet: (await this.getLPTokenSupplyAndNounce())[0],
           sundialFeeReceiverWallet: (await this.getLendingFeeReceiverAndNounce())[0],
           principleTokenMint: (await this.getPrincipleMintAndNounce())[0],
@@ -255,8 +255,8 @@ export class SundialLendingWrapper {
     userLiquidityWallet: PublicKey;
     userAuthority: PublicKey;
   }) {
-    invariant(this.sundialLending, "sundial key not set");
-    invariant(this.sundialLendingData, "sundial data not loaded");
+    invariant(this.sundial, "sundial key not set");
+    invariant(this.sundialData, "sundial data not loaded");
 
     const [principleTokenMint] = await this.getPrincipleMintAndNounce();
 
@@ -269,8 +269,8 @@ export class SundialLendingWrapper {
     return new TransactionEnvelope(this.sdk.provider, [
       this.program.instruction.redeemPrincipleTokens(amount,{
         accounts: {
-          sundialLending: this.sundialLending,
-          sundialLendingAuthority: (await this.getSundialAuthorityAndNounce())[0],
+          sundial: this.sundial,
+          sundialAuthority: (await this.getSundialAuthorityAndNounce())[0],
           sundialPortLiquidityWallet: (await this.getLiquidityTokenSupplyAndNounce())[0],
           sundialPortLpWallet: (await this.getLPTokenSupplyAndNounce())[0],
           principleTokenMint: (await this.getPrincipleMintAndNounce())[0],
@@ -295,8 +295,8 @@ export class SundialLendingWrapper {
     owner: PublicKey;
     userAuthority: PublicKey;
   }) {
-    invariant(this.sundialLending, "sundial key not set");
-    invariant(this.sundialLendingData, "sundial data not loaded");
+    invariant(this.sundial, "sundial key not set");
+    invariant(this.sundialData, "sundial data not loaded");
 
     const [yieldTokenMint] = await this.getYieldMintAndNounce();
 
@@ -310,8 +310,8 @@ export class SundialLendingWrapper {
     return new TransactionEnvelope(this.sdk.provider, [
       this.program.instruction.redeemYieldTokens(amount, {
         accounts: {
-          sundialLending: this.sundialLending,
-          sundialLendingAuthority: (await this.getSundialAuthorityAndNounce())[0],
+          sundial: this.sundial,
+          sundialAuthority: (await this.getSundialAuthorityAndNounce())[0],
           sundialPortLiquidityWallet: (await this.getLiquidityTokenSupplyAndNounce())[0],
           sundialPortLpWallet: (await this.getLPTokenSupplyAndNounce())[0],
           yieldTokenMint: (await this.getYieldMintAndNounce())[0],
@@ -333,8 +333,8 @@ export class SundialLendingWrapper {
     lendingMarket: PublicKey;
     reserve: ParsedAccount<ReserveData>;
   }) {
-    invariant(this.sundialLending, "sundial key not set");
-    invariant(this.sundialLendingData, "sundial data not loaded");
+    invariant(this.sundial, "sundial key not set");
+    invariant(this.sundialData, "sundial data not loaded");
 
     const ixs = [
       refreshReserveInstruction(reserve.pubkey, null)
@@ -347,8 +347,8 @@ export class SundialLendingWrapper {
     ixs.push(
       this.program.instruction.redeemLp({
         accounts: {
-          sundialLending: this.sundialLending,
-          sundialLendingAuthority: (await this.getSundialAuthorityAndNounce())[0],
+          sundial: this.sundial,
+          sundialAuthority: (await this.getSundialAuthorityAndNounce())[0],
           sundialPortLiquidityWallet: (await this.getLiquidityTokenSupplyAndNounce())[0],
           sundialPortLpWallet: (await this.getLPTokenSupplyAndNounce())[0],
           portAccounts: {

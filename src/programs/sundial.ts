@@ -3,12 +3,14 @@ import { SundialIDL } from "../idls/sundial";
 
 export type SundialTypes = AnchorTypes<
   SundialIDL, {
-    sundialLending: SundialLendingData;
+    sundial: SundialData;
+    sundialCollateral: SundialCollateralData;
+    sundialProfile: SundialProfileData;
   }
 >;
 
 type Accounts = SundialTypes["Accounts"];
-export type SundialLendingData = Accounts["SundialLending"];
-export type SundialBorrowingData = Accounts["SundialBorrowing"];
+export type SundialData = Accounts["Sundial"];
+export type SundialCollateralData = Accounts["SundialCollateral"];
 export type SundialProfileData = Accounts["SundialProfile"];
 export type SundialProgram = SundialTypes["Program"];

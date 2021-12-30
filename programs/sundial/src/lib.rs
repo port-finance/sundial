@@ -1,7 +1,7 @@
 use crate::borrowing_instructions::*;
 use crate::lending_instructions::*;
-use crate::state::SundialBorrowingBumps;
-use crate::state::SundialLendingBumps;
+use crate::state::SundialBumps;
+use crate::state::SundialCollateralBumps;
 use anchor_lang::prelude::*;
 
 pub mod error;
@@ -33,26 +33,26 @@ pub mod sundial {
     use solana_maths::{Decimal, Rate, TryDiv, TryMul, U128};
     use vipers::{unwrap_int, unwrap_opt};
 
-    pub fn initialize_lending(
-        ctx: Context<InitializeSundialLending>,
-        bumps: SundialLendingBumps,
+    pub fn initialize_sundial(
+        ctx: Context<InitializeSundial>,
+        bumps: SundialBumps,
         duration_in_seconds: i64,
         port_lending_program: Pubkey,
-        config: SundialLendingInitConfigParams,
+        config: InitSundialConfigParams,
     ) -> ProgramResult {
-        let sundial_lending = &mut ctx.accounts.sundial_lending;
-        sundial_lending.bumps = bumps;
-        sundial_lending.token_program = ctx.accounts.token_program.key();
-        sundial_lending.reserve = ctx.accounts.reserve.key();
+        let sundial = &mut ctx.accounts.sundial;
+        sundial.bumps = bumps;
+        sundial.token_program = ctx.accounts.token_program.key();
+        sundial.reserve = ctx.accounts.reserve.key();
         let start_exchange_rate =
             log_then_prop_err!(ctx.accounts.reserve.collateral_exchange_rate());
-        sundial_lending.start_exchange_rate = start_exchange_rate.0 .0 .0;
-        sundial_lending.port_lending_program = port_lending_program;
+        sundial.start_exchange_rate = start_exchange_rate.0 .0 .0;
+        sundial.port_lending_program = port_lending_program;
         let current_unix_time_stamp = ctx.accounts.clock.unix_timestamp;
-        sundial_lending.duration_in_seconds = duration_in_seconds;
-        sundial_lending.end_unix_time_stamp =
+        sundial.duration_in_seconds = duration_in_seconds;
+        sundial.end_unix_time_stamp =
             unwrap_int!(current_unix_time_stamp.checked_add(duration_in_seconds));
-        sundial_lending.sundial_lending_config = config.into();
+        sundial.config = config.into();
         Ok(())
     }
 
@@ -60,10 +60,9 @@ pub mod sundial {
         ctx: Context<DepositAndMintTokens>,
         amount: u64,
     ) -> ProgramResult {
-        let sundial_lending = &ctx.accounts.sundial_lending;
+        let sundial = &ctx.accounts.sundial;
         let existed_lp_amount = ctx.accounts.sundial_port_lp_wallet.amount;
-        let start_exchange_rate =
-            CollateralExchangeRate(Rate(U128(sundial_lending.start_exchange_rate)));
+        let start_exchange_rate = CollateralExchangeRate(Rate(U128(sundial.start_exchange_rate)));
 
         log_then_prop_err!(deposit_reserve(
             ctx.accounts.port_accounts.create_deposit_reserve_context(
@@ -85,14 +84,14 @@ pub mod sundial {
                 .amount
                 .checked_sub(existed_lp_amount)))?;
 
-        let fee = &sundial_lending.sundial_lending_config.lending_fee;
+        let fee = &sundial.config.lending_fee;
         let fee_amount = log_then_prop_err!(fee.mint_fee(
             amount,
             create_mint_to_cpi(
                 ctx.accounts.principle_token_mint.to_account_info(),
                 ctx.accounts.sundial_fee_receiver_wallet.to_account_info(),
-                ctx.accounts.sundial_lending_authority.to_account_info(),
-                seeds!(ctx, sundial_lending, authority),
+                ctx.accounts.sundial_authority.to_account_info(),
+                seeds!(ctx, sundial, authority),
                 ctx.accounts.token_program.to_account_info(),
             ),
         ));
@@ -101,8 +100,8 @@ pub mod sundial {
             create_mint_to_cpi(
                 ctx.accounts.principle_token_mint.to_account_info(),
                 ctx.accounts.user_principle_token_wallet.to_account_info(),
-                ctx.accounts.sundial_lending_authority.to_account_info(),
-                seeds!(ctx, sundial_lending, authority),
+                ctx.accounts.sundial_authority.to_account_info(),
+                seeds!(ctx, sundial, authority),
                 ctx.accounts.token_program.to_account_info(),
             ),
             unwrap_int!(principle_mint_amount.checked_sub(fee_amount)),
@@ -112,14 +111,14 @@ pub mod sundial {
             create_mint_to_cpi(
                 ctx.accounts.yield_token_mint.to_account_info(),
                 ctx.accounts.user_yield_token_wallet.to_account_info(),
-                ctx.accounts.sundial_lending_authority.to_account_info(),
-                seeds!(ctx, sundial_lending, authority),
+                ctx.accounts.sundial_authority.to_account_info(),
+                seeds!(ctx, sundial, authority),
                 ctx.accounts.token_program.to_account_info(),
             ),
             amount,
         ));
 
-        let liquidity_cap = &sundial_lending.sundial_lending_config.liquidity_cap;
+        let liquidity_cap = &sundial.config.liquidity_cap;
 
         log_then_prop_err!(liquidity_cap.check(&mut ctx.accounts.principle_token_mint));
         emit!(DidDeposit {
@@ -150,8 +149,8 @@ pub mod sundial {
             create_transfer_cpi(
                 ctx.accounts.sundial_port_liquidity_wallet.to_account_info(),
                 ctx.accounts.user_liquidity_wallet.to_account_info(),
-                ctx.accounts.sundial_lending_authority.to_account_info(),
-                seeds!(ctx, sundial_lending, authority),
+                ctx.accounts.sundial_authority.to_account_info(),
+                seeds!(ctx, sundial, authority),
                 ctx.accounts.token_program.to_account_info(),
             ),
             amount,
@@ -195,8 +194,8 @@ pub mod sundial {
                 create_transfer_cpi(
                     ctx.accounts.sundial_port_liquidity_wallet.to_account_info(),
                     ctx.accounts.user_liquidity_wallet.to_account_info(),
-                    ctx.accounts.sundial_lending_authority.to_account_info(),
-                    seeds!(ctx, sundial_lending, authority),
+                    ctx.accounts.sundial_authority.to_account_info(),
+                    seeds!(ctx, sundial, authority),
                     ctx.accounts.token_program.to_account_info(),
                 ),
                 amount_to_redeem,
@@ -214,25 +213,25 @@ pub mod sundial {
             ctx.accounts.port_accounts.create_redeem_context(
                 ctx.accounts.sundial_port_liquidity_wallet.to_account_info(),
                 ctx.accounts.sundial_port_lp_wallet.to_account_info(),
-                ctx.accounts.sundial_lending_authority.to_account_info(),
+                ctx.accounts.sundial_authority.to_account_info(),
                 ctx.accounts.clock.to_account_info(),
                 ctx.accounts.token_program.to_account_info(),
-                seeds!(ctx, sundial_lending, authority),
+                seeds!(ctx, sundial, authority),
             ),
             ctx.accounts.sundial_port_lp_wallet.amount,
         ));
         Ok(())
     }
 
-    pub fn initialize_borrowing(
-        ctx: Context<InitializeSundialBorrowing>,
-        bumps: SundialBorrowingBumps,
-        config: InitSundialBorrowingConfigParams,
+    pub fn initialize_collateral(
+        ctx: Context<InitializeSundialCollateral>,
+        bumps: SundialCollateralBumps,
+        config: InitSundialCollateralConfigParams,
     ) -> ProgramResult {
-        let sundial_borrowing = &mut ctx.accounts.sundial_borrowing;
-        sundial_borrowing.bumps = bumps;
-        sundial_borrowing.port_collateral_reserve = ctx.accounts.port_collateral_reserve.key();
-        sundial_borrowing.sundial_borrowing_config = config.into();
+        let sundial_collateral = &mut ctx.accounts.sundial_collateral;
+        sundial_collateral.bumps = bumps;
+        sundial_collateral.port_collateral_reserve = ctx.accounts.port_collateral_reserve.key();
+        sundial_collateral.sundial_collateral_config = config.into();
         Ok(())
     }
 
@@ -261,7 +260,7 @@ pub mod sundial {
         Ok(())
     }
 
-    pub fn deposit_sundial_borrowing_collateral<'info>(
+    pub fn deposit_sundial_collateral<'info>(
         ctx: Context<'_, '_, '_, 'info, DepositSundialBorrowingCollateral<'info>>,
         amount: u64,
     ) -> ProgramResult {
@@ -269,7 +268,7 @@ pub mod sundial {
             create_transfer_cpi(
                 ctx.accounts.user_port_lp_wallet.to_account_info(),
                 ctx.accounts
-                    .sundial_borrowing_port_lp_wallet
+                    .sundial_collateral_port_lp_wallet
                     .to_account_info(),
                 ctx.accounts.transfer_authority.to_account_info(),
                 &[],
@@ -279,7 +278,7 @@ pub mod sundial {
         ));
 
         let borrowing_profile = &mut ctx.accounts.sundial_profile;
-        let reserve_pubkey = ctx.accounts.sundial_borrowing.port_collateral_reserve;
+        let reserve_pubkey = ctx.accounts.sundial_collateral.port_collateral_reserve;
 
         log_then_prop_err!(update_or_insert(
             &mut borrowing_profile.collaterals,
@@ -297,8 +296,8 @@ pub mod sundial {
                     amount,
                     reserve_info,
                     ctx.accounts
-                        .sundial_borrowing
-                        .sundial_borrowing_config
+                        .sundial_collateral
+                        .sundial_collateral_config
                         .clone()
                         .into(),
                 )
@@ -307,25 +306,25 @@ pub mod sundial {
         Ok(())
     }
 
-    pub fn withdraw_sundial_borrowing_sundial(
-        ctx: Context<WithdrawSundialBorrowingCollateral>,
+    pub fn withdraw_sundial_collateral(
+        ctx: Context<WithdrawSundialCollateral>,
         amount: u64,
     ) -> ProgramResult {
         log_then_prop_err!(transfer(
             create_transfer_cpi(
                 ctx.accounts
-                    .sundial_borrowing_port_lp_wallet
+                    .sundial_collateral_port_lp_wallet
                     .to_account_info(),
                 ctx.accounts.user_port_lp_wallet.to_account_info(),
-                ctx.accounts.sundial_borrowing_authority.to_account_info(),
-                seeds!(ctx, sundial_borrowing, authority),
+                ctx.accounts.sundial_collateral_authority.to_account_info(),
+                seeds!(ctx, sundial_collateral, authority),
                 ctx.accounts.token_program.to_account_info(),
             ),
             amount
         ));
 
         let borrowing_profile = &mut ctx.accounts.sundial_profile;
-        let reserve_pubkey = ctx.accounts.sundial_borrowing.port_collateral_reserve;
+        let reserve_pubkey = ctx.accounts.sundial_collateral.port_collateral_reserve;
 
         let collateral = vipers::unwrap_opt!(
             borrowing_profile
@@ -349,25 +348,23 @@ pub mod sundial {
         Ok(())
     }
 
-    pub fn mint_sundial_borrowing_liquidity<'info>(
-        ctx: Context<'_, '_, '_, 'info, MintSundialBorrowingLiquidity<'info>>,
+    pub fn mint_sundial_liquidity<'info>(
+        ctx: Context<'_, '_, '_, 'info, MintSundialLiquidityWithCollateral<'info>>,
         amount: u64,
     ) -> ProgramResult {
         log_then_prop_err!(mint_to(
             create_mint_to_cpi(
-                ctx.accounts
-                    .sundial_lending_principle_mint
-                    .to_account_info(),
+                ctx.accounts.sundial_principle_mint.to_account_info(),
                 ctx.accounts.user_principle_wallet.to_account_info(),
-                ctx.accounts.sundial_lending_authority.to_account_info(),
-                seeds!(ctx, sundial_lending, authority),
+                ctx.accounts.sundial_authority.to_account_info(),
+                seeds!(ctx, sundial, authority),
                 ctx.accounts.token_program.to_account_info()
             ),
             amount
         ));
 
         let borrowing_profile = &mut ctx.accounts.sundial_profile;
-        let loan_mint = ctx.accounts.sundial_lending_principle_mint.key();
+        let loan_mint = ctx.accounts.sundial_principle_mint.key();
         log_then_prop_err!(update_or_insert(
             &mut borrowing_profile.loans,
             |l| l.mint_pubkey == loan_mint,
@@ -385,7 +382,7 @@ pub mod sundial {
                 );
                 vipers::assert_keys_eq!(
                     reserve_info.key,
-                    ctx.accounts.sundial_lending.reserve,
+                    ctx.accounts.sundial.reserve,
                     "Invalid Reserve"
                 );
                 vipers::assert_keys_eq!(
@@ -397,9 +394,9 @@ pub mod sundial {
                 SundialBorrowingLoan::init_loan(
                     amount,
                     oracle_info,
-                    ctx.accounts.sundial_lending_principle_mint.key(),
+                    ctx.accounts.sundial_principle_mint.key(),
                     &ctx.accounts.clock,
-                    ctx.accounts.sundial_lending.end_unix_time_stamp,
+                    ctx.accounts.sundial.end_unix_time_stamp,
                 )
             }
         ));
@@ -411,15 +408,12 @@ pub mod sundial {
         Ok(())
     }
 
-    pub fn repay_sundial_borrowing_liquidity(
-        ctx: Context<RepaySundialBorrowingLiquidity>,
+    pub fn repay_sundial_liquidity(
+        ctx: Context<RepaySundialLiquidity>,
         max_repay_amount: u64,
     ) -> ProgramResult {
         let corresponded_principle_mint = log_then_prop_err!(Pubkey::create_program_address(
-            &[
-                &ctx.accounts.sundial_lending.token_program.key().to_bytes(),
-                b"lp"
-            ],
+            &[&ctx.accounts.sundial.token_program.key().to_bytes(), b"lp"],
             ctx.program_id
         ));
         let borrowing_profile = &mut ctx.accounts.sundial_profile;
@@ -442,9 +436,7 @@ pub mod sundial {
         log_then_prop_err!(transfer(
             create_transfer_cpi(
                 ctx.accounts.user_liquidity_wallet.to_account_info(),
-                ctx.accounts
-                    .sundial_lending_liquidity_wallet
-                    .to_account_info(),
+                ctx.accounts.sundial_liquidity_wallet.to_account_info(),
                 ctx.accounts.transfer_authority.to_account_info(),
                 &[],
                 ctx.accounts.token_program.to_account_info(),
@@ -478,10 +470,7 @@ pub mod sundial {
         };
 
         let corresponded_principle_mint = log_then_prop_err!(Pubkey::create_program_address(
-            &[
-                &ctx.accounts.sundial_lending.token_program.key().to_bytes(),
-                b"lp"
-            ],
+            &[&ctx.accounts.sundial.token_program.key().to_bytes(), b"lp"],
             ctx.program_id
         ));
         let (collaterals, loans) = borrowing_profile.get_mut_collaterals_and_loans();
@@ -529,9 +518,7 @@ pub mod sundial {
         log_then_prop_err!(transfer(
             create_transfer_cpi(
                 ctx.accounts.user_repay_liquidity_wallet.to_account_info(),
-                ctx.accounts
-                    .sundial_lending_liquidity_wallet
-                    .to_account_info(),
+                ctx.accounts.sundial_liquidity_wallet.to_account_info(),
                 ctx.accounts.user_authority.to_account_info(),
                 &[],
                 ctx.accounts.token_program.to_account_info(),
@@ -542,8 +529,8 @@ pub mod sundial {
         Ok(())
     }
 
-    pub fn create_and_init_sundial_borrowing_profile(
-        ctx: Context<CreateAndInitSundialBorrowingProfile>,
+    pub fn create_and_init_sundial_profile(
+        ctx: Context<CreateAndInitSundialProfile>,
         _bump: u8,
     ) -> ProgramResult {
         let profile = &mut ctx.accounts.sundial_profile;

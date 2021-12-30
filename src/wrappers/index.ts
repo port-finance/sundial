@@ -1,1 +1,1 @@
-export * from './sundialLending'
+export * from './sundial'

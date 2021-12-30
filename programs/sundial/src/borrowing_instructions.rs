@@ -1,19 +1,19 @@
 use crate::state::{
-    LiquidationConfig, LiquidityCap, SundialBorrowing, SundialBorrowingBumps,
-    SundialBorrowingConfig, SundialLending, SundialProfile, LTV,
+    LiquidationConfig, LiquidityCap, Sundial, SundialCollateral, SundialCollateralBumps,
+    SundialCollateralConfig, SundialProfile, LTV,
 };
 use anchor_lang::prelude::*;
 use anchor_spl::token::{Mint, Token, TokenAccount};
 use port_anchor_adaptor::{PortLendingMarket, PortReserve};
 
 #[derive(Accounts, Clone)]
-#[instruction(bumps: SundialBorrowingBumps, config: InitSundialBorrowingConfigParams)]
-pub struct InitializeSundialBorrowing<'info> {
+#[instruction(bumps: SundialCollateralBumps, config: InitSundialCollateralConfigParams)]
+pub struct InitializeSundialCollateral<'info> {
     #[account(init, payer=owner)]
-    pub sundial_borrowing: Account<'info, SundialBorrowing>,
-    #[account(seeds=[sundial_borrowing.key().as_ref(), b"authority"], bump=bumps.authority_bump)]
-    pub sundial_borrowing_authority: UncheckedAccount<'info>,
-    #[account(init, payer=owner, seeds = [sundial_borrowing.key().as_ref(), b"lp"], bump = bumps.port_lp_bump, token::authority=sundial_borrowing_authority, token::mint=port_lp_mint)]
+    pub sundial_collateral: Account<'info, SundialCollateral>,
+    #[account(seeds=[sundial_collateral.key().as_ref(), b"authority"], bump=bumps.authority_bump)]
+    pub sundial_collateral_authority: UncheckedAccount<'info>,
+    #[account(init, payer=owner, seeds = [sundial_collateral.key().as_ref(), b"lp"], bump = bumps.port_lp_bump, token::authority=sundial_collateral_authority, token::mint=port_lp_mint)]
     pub sundial_port_lp_wallet: Box<Account<'info, TokenAccount>>,
     #[account(has_one=lending_market)]
     pub port_collateral_reserve: Box<Account<'info, PortReserve>>,
@@ -29,16 +29,16 @@ pub struct InitializeSundialBorrowing<'info> {
 }
 
 #[derive(AnchorDeserialize, AnchorSerialize, Debug, PartialEq, Clone, Default)]
-pub struct InitSundialBorrowingConfigParams {
+pub struct InitSundialCollateralConfigParams {
     pub ltv: u8,
     pub liquidation_threshold: u8,
     pub liquidation_penalty: u8,
     pub liquidity_cap: u64,
 }
 
-impl From<InitSundialBorrowingConfigParams> for SundialBorrowingConfig {
-    fn from(config: InitSundialBorrowingConfigParams) -> Self {
-        SundialBorrowingConfig {
+impl From<InitSundialCollateralConfigParams> for SundialCollateralConfig {
+    fn from(config: InitSundialCollateralConfigParams) -> Self {
+        SundialCollateralConfig {
             ltv: LTV { ltv: config.ltv },
             liquidation_config: LiquidationConfig {
                 liquidation_threshold: config.liquidation_threshold,
@@ -65,9 +65,9 @@ pub struct RefreshSundialBorrowingProfile<'info> {
 pub struct DepositSundialBorrowingCollateral<'info> {
     #[account(mut, has_one=user)]
     pub sundial_profile: Box<Account<'info, SundialProfile>>, //refreshed
-    pub sundial_borrowing: Account<'info, SundialBorrowing>,
-    #[account(mut, seeds = [sundial_borrowing.key().as_ref(), b"lp"], bump = sundial_borrowing.bumps.port_lp_bump)]
-    pub sundial_borrowing_port_lp_wallet: Account<'info, TokenAccount>,
+    pub sundial_collateral: Account<'info, SundialCollateral>,
+    #[account(mut, seeds = [sundial_collateral.key().as_ref(), b"lp"], bump = sundial_collateral.bumps.port_lp_bump)]
+    pub sundial_collateral_port_lp_wallet: Account<'info, TokenAccount>,
     #[account(mut)]
     pub user_port_lp_wallet: Account<'info, TokenAccount>,
     pub token_program: Program<'info, Token>,
@@ -77,14 +77,14 @@ pub struct DepositSundialBorrowingCollateral<'info> {
 
 #[derive(Accounts, Clone)]
 #[instruction(amount:u64)]
-pub struct MintSundialBorrowingLiquidity<'info> {
+pub struct MintSundialLiquidityWithCollateral<'info> {
     #[account(mut, has_one=user)]
     pub sundial_profile: Box<Account<'info, SundialProfile>>,
-    pub sundial_lending: Account<'info, SundialLending>,
-    #[account(seeds=[sundial_lending.key().as_ref(), b"authority"], bump=sundial_lending.bumps.authority_bump)]
-    pub sundial_lending_authority: UncheckedAccount<'info>,
-    #[account(mut, seeds = [sundial_lending.key().as_ref(), b"principle_mint"], bump = sundial_lending.bumps.principle_mint_bump)]
-    pub sundial_lending_principle_mint: Account<'info, Mint>,
+    pub sundial: Account<'info, Sundial>,
+    #[account(seeds=[sundial.key().as_ref(), b"authority"], bump=sundial.bumps.authority_bump)]
+    pub sundial_authority: UncheckedAccount<'info>,
+    #[account(mut, seeds = [sundial.key().as_ref(), b"principle_mint"], bump = sundial.bumps.principle_mint_bump)]
+    pub sundial_principle_mint: Account<'info, Mint>,
     #[account(mut)]
     pub user_principle_wallet: Account<'info, TokenAccount>,
     pub token_program: Program<'info, Token>,
@@ -94,14 +94,14 @@ pub struct MintSundialBorrowingLiquidity<'info> {
 
 #[derive(Accounts, Clone)]
 #[instruction(amount: u64)]
-pub struct WithdrawSundialBorrowingCollateral<'info> {
+pub struct WithdrawSundialCollateral<'info> {
     #[account(mut, has_one=user)]
     pub sundial_profile: Box<Account<'info, SundialProfile>>, //refreshed
-    pub sundial_borrowing: Account<'info, SundialBorrowing>,
-    #[account(seeds=[sundial_borrowing.key().as_ref(), b"authority"], bump=sundial_borrowing.bumps.authority_bump)]
-    pub sundial_borrowing_authority: UncheckedAccount<'info>,
-    #[account(mut, seeds = [sundial_borrowing.key().as_ref(), b"lp"], bump = sundial_borrowing.bumps.port_lp_bump)]
-    pub sundial_borrowing_port_lp_wallet: Account<'info, TokenAccount>,
+    pub sundial_collateral: Account<'info, SundialCollateral>,
+    #[account(seeds=[sundial_collateral.key().as_ref(), b"authority"], bump=sundial_collateral.bumps.authority_bump)]
+    pub sundial_collateral_authority: UncheckedAccount<'info>,
+    #[account(mut, seeds = [sundial_collateral.key().as_ref(), b"lp"], bump = sundial_collateral.bumps.port_lp_bump)]
+    pub sundial_collateral_port_lp_wallet: Account<'info, TokenAccount>,
     #[account(mut)]
     pub user_port_lp_wallet: Account<'info, TokenAccount>,
     pub token_program: Program<'info, Token>,
@@ -110,12 +110,12 @@ pub struct WithdrawSundialBorrowingCollateral<'info> {
 
 #[derive(Accounts, Clone)]
 #[instruction(amount:u64)]
-pub struct RepaySundialBorrowingLiquidity<'info> {
+pub struct RepaySundialLiquidity<'info> {
     #[account(mut, has_one=user)]
     pub sundial_profile: Box<Account<'info, SundialProfile>>,
-    pub sundial_lending: Account<'info, SundialLending>,
-    #[account(mut, seeds = [sundial_lending.key().as_ref(), b"liquidity"], bump = sundial_lending.bumps.port_liquidity_bump)]
-    pub sundial_lending_liquidity_wallet: Account<'info, TokenAccount>,
+    pub sundial: Account<'info, Sundial>,
+    #[account(mut, seeds = [sundial.key().as_ref(), b"liquidity"], bump = sundial.bumps.port_liquidity_bump)]
+    pub sundial_liquidity_wallet: Account<'info, TokenAccount>,
     #[account(mut)]
     pub user_liquidity_wallet: Account<'info, TokenAccount>,
     pub transfer_authority: Signer<'info>,
@@ -132,9 +132,9 @@ pub struct LiquidateSundialProfile<'info> {
     pub user_repay_liquidity_wallet: Account<'info, TokenAccount>,
     #[account(mut)]
     pub user_withdraw_collateral_wallet: Account<'info, TokenAccount>,
-    pub sundial_lending: Account<'info, SundialLending>,
-    #[account(mut, seeds = [sundial_lending.key().as_ref(), b"liquidity"], bump = sundial_lending.bumps.port_liquidity_bump)]
-    pub sundial_lending_liquidity_wallet: Account<'info, TokenAccount>,
+    pub sundial: Account<'info, Sundial>,
+    #[account(mut, seeds = [sundial.key().as_ref(), b"liquidity"], bump = sundial.bumps.port_liquidity_bump)]
+    pub sundial_liquidity_wallet: Account<'info, TokenAccount>,
     pub user_authority: Signer<'info>,
     pub token_program: Program<'info, Token>,
     pub clock: Sysvar<'info, Clock>,
@@ -142,7 +142,7 @@ pub struct LiquidateSundialProfile<'info> {
 
 #[derive(Accounts, Clone)]
 #[instruction(bump: u8)]
-pub struct CreateAndInitSundialBorrowingProfile<'info> {
+pub struct CreateAndInitSundialProfile<'info> {
     #[account(init, payer=user, seeds=[user.key().as_ref(), b"profile"], bump=bump)]
     pub sundial_profile: Box<Account<'info, SundialProfile>>,
     #[account(mut)]

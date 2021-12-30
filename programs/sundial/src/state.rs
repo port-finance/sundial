@@ -9,8 +9,9 @@ use vipers::unwrap_int;
 
 #[account]
 #[derive(Debug, PartialEq, Default)]
-pub struct SundialLending {
-    pub bumps: SundialLendingBumps,
+pub struct Sundial {
+    /// Bump Seed when generate various PDAs.
+    pub bumps: SundialBumps,
     /// The duration from [Sundial] start to end.
     pub duration_in_seconds: i64,
     /// The end unix time stamp in seconds.
@@ -25,13 +26,13 @@ pub struct SundialLending {
     /// Port Finance Variable Rate Lending Program.
     pub port_lending_program: Pubkey,
     /// Configuration for the given [Sundial].
-    pub sundial_lending_config: SundialLendingConfig,
+    pub config: SundialConfig,
     /// Space in case we need to add more data.
     pub _padding: [u64; 22],
 }
 
 #[derive(AnchorDeserialize, AnchorSerialize, Debug, PartialEq, Clone, Default)]
-pub struct SundialLendingConfig {
+pub struct SundialConfig {
     /// Lending fee bips charged in Principal Tokens
     pub lending_fee: Fee,
     /// Borrowing fee bips charged in Principal Tokens
@@ -90,7 +91,7 @@ impl Fee {
 }
 
 #[derive(AnchorDeserialize, AnchorSerialize, Debug, PartialEq, Clone, Default)]
-pub struct SundialLendingBumps {
+pub struct SundialBumps {
     pub authority_bump: u8,
     pub port_liquidity_bump: u8,
     pub port_lp_bump: u8,
@@ -101,21 +102,21 @@ pub struct SundialLendingBumps {
 
 #[account]
 #[derive(Debug, PartialEq, Default)]
-pub struct SundialBorrowing {
-    pub bumps: SundialBorrowingBumps,
-    pub sundial_borrowing_config: SundialBorrowingConfig,
+pub struct SundialCollateral {
+    pub bumps: SundialCollateralBumps,
+    pub sundial_collateral_config: SundialCollateralConfig,
     pub port_collateral_reserve: Pubkey,
     pub _padding: [u64; 32],
 }
 
 #[derive(AnchorDeserialize, AnchorSerialize, Debug, PartialEq, Clone, Default)]
-pub struct SundialBorrowingBumps {
+pub struct SundialCollateralBumps {
     pub authority_bump: u8,
     pub port_lp_bump: u8,
 }
 
 #[derive(AnchorDeserialize, AnchorSerialize, Debug, PartialEq, Clone, Default)]
-pub struct SundialBorrowingConfig {
+pub struct SundialCollateralConfig {
     pub ltv: LTV,
     pub liquidation_config: LiquidationConfig,
     pub liquidity_cap: LiquidityCap,
@@ -333,8 +334,8 @@ pub struct SundialBorrowingCollateralConfig {
     pub liquidation_config: LiquidationConfig,
 }
 
-impl From<SundialBorrowingConfig> for SundialBorrowingCollateralConfig {
-    fn from(config: SundialBorrowingConfig) -> Self {
+impl From<SundialCollateralConfig> for SundialBorrowingCollateralConfig {
+    fn from(config: SundialCollateralConfig) -> Self {
         SundialBorrowingCollateralConfig {
             ltv: config.ltv,
             liquidation_config: config.liquidation_config,
