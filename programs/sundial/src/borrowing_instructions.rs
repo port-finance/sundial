@@ -11,7 +11,7 @@ pub trait CheckSundialProfileStale {
     fn check_sundial_profile_stale(&self) -> ProgramResult;
 }
 #[derive(Accounts, Clone)]
-#[instruction(bumps: SundialCollateralBumps, config: SundialCollateralInitConfigParams)]
+#[instruction(bumps: SundialCollateralBumps, config: SundialCollateralConfigParams)]
 pub struct InitializeSundialCollateral<'info> {
     #[account(init, payer=owner)]
     pub sundial_collateral: Account<'info, SundialCollateral>,
@@ -30,15 +30,19 @@ pub struct InitializeSundialCollateral<'info> {
 }
 
 #[derive(AnchorDeserialize, AnchorSerialize, Debug, PartialEq, Clone, Default)]
-pub struct SundialCollateralInitConfigParams {
+pub struct SundialCollateralConfigParams {
+    /// Loan to value ratio in percentage.
     pub ltv: u8,
+    /// TODO: docs
     pub liquidation_threshold: u8,
+    /// TODO: docs
     pub liquidation_penalty: u8,
+    /// TODO: docs
     pub liquidity_cap: u64,
 }
 
-impl From<SundialCollateralInitConfigParams> for SundialCollateralConfig {
-    fn from(config: SundialCollateralInitConfigParams) -> Self {
+impl From<SundialCollateralConfigParams> for SundialCollateralConfig {
+    fn from(config: SundialCollateralConfigParams) -> Self {
         SundialCollateralConfig {
             ltv: LTV { ltv: config.ltv },
             liquidation_config: LiquidationConfig {
@@ -63,19 +67,19 @@ pub struct RefreshSundialCollateral<'info> {
 
 #[derive(Accounts, Clone)]
 #[instruction()]
-pub struct RefreshSundialBorrowingProfile<'info> {
+pub struct RefreshSundialProfile<'info> {
     #[account(mut)]
     pub sundial_profile: Box<Account<'info, SundialProfile>>,
     pub clock: Sysvar<'info, Clock>,
+    // optional [SundialCollateral] and oracles
 }
-//optional sundial_collaterals and oracles
 
 #[derive(Accounts, Clone)]
 #[instruction(amount:u64)]
-pub struct DepositSundialBorrowingCollateral<'info> {
+pub struct DepositSundialCollateral<'info> {
     #[account(mut, has_one=user @ SundialError::InvalidProfileUser)]
     pub sundial_profile: Box<Account<'info, SundialProfile>>,
-    #[account(constraint = sundial_collateral.owner == sundial_profile.sundial_owner @ SundialError::SundialOwnerNotMatch)]
+    #[account(constraint = sundial_collateral.owner == sundial_profile.admin @ SundialError::SundialOwnerNotMatch)]
     pub sundial_collateral: Account<'info, SundialCollateral>,
     #[account(mut, seeds = [sundial_collateral.key().as_ref(), b"lp"], bump = sundial_collateral.bumps.port_lp_bump)]
     pub sundial_collateral_port_lp_wallet: Account<'info, TokenAccount>,
@@ -92,7 +96,7 @@ pub struct DepositSundialBorrowingCollateral<'info> {
 pub struct MintSundialLiquidityWithCollateral<'info> {
     #[account(mut, has_one=user @ SundialError::InvalidProfileUser)]
     pub sundial_profile: Box<Account<'info, SundialProfile>>, //refreshed
-    #[account(constraint = sundial.owner == sundial_profile.sundial_owner @ SundialError::SundialOwnerNotMatch)]
+    #[account(constraint = sundial.owner == sundial_profile.admin @ SundialError::SundialOwnerNotMatch)]
     pub sundial: Account<'info, Sundial>,
     #[account(seeds=[sundial.key().as_ref(), b"authority"], bump=sundial.bumps.authority_bump)]
     pub sundial_authority: UncheckedAccount<'info>,
@@ -110,7 +114,7 @@ pub struct MintSundialLiquidityWithCollateral<'info> {
 pub struct WithdrawSundialCollateral<'info> {
     #[account(mut, has_one=user)]
     pub sundial_profile: Box<Account<'info, SundialProfile>>, //refreshed
-    #[account(constraint = sundial_collateral.owner == sundial_profile.sundial_owner @ SundialError::SundialOwnerNotMatch)]
+    #[account(constraint = sundial_collateral.owner == sundial_profile.admin @ SundialError::SundialOwnerNotMatch)]
     pub sundial_collateral: Account<'info, SundialCollateral>,
     #[account(seeds=[sundial_collateral.key().as_ref(), b"authority"], bump=sundial_collateral.bumps.authority_bump)]
     pub sundial_collateral_authority: UncheckedAccount<'info>,
@@ -128,7 +132,7 @@ pub struct WithdrawSundialCollateral<'info> {
 pub struct RepaySundialLiquidity<'info> {
     #[account(mut, has_one=user)]
     pub sundial_profile: Box<Account<'info, SundialProfile>>,
-    #[account(constraint = sundial.owner == sundial_profile.sundial_owner @ SundialError::SundialOwnerNotMatch)]
+    #[account(constraint = sundial.owner == sundial_profile.admin @ SundialError::SundialOwnerNotMatch)]
     pub sundial: Account<'info, Sundial>,
     #[account(mut, seeds = [sundial.key().as_ref(), b"liquidity"], bump = sundial.bumps.port_liquidity_bump)]
     pub sundial_liquidity_wallet: Account<'info, TokenAccount>,
@@ -158,7 +162,7 @@ pub struct LiquidateSundialProfile<'info> {
 
 #[derive(Accounts, Clone)]
 #[instruction(bump: u8, sundial_owner: Pubkey)]
-pub struct CreateAndInitSundialProfile<'info> {
+pub struct CreateSundialProfile<'info> {
     #[account(init, payer=user, seeds=[user.key().as_ref(), b"profile"], bump=bump)]
     pub sundial_profile: Box<Account<'info, SundialProfile>>,
     #[account(mut)]
@@ -168,7 +172,7 @@ pub struct CreateAndInitSundialProfile<'info> {
 }
 
 #[derive(Accounts, Clone)]
-#[instruction(config: SundialCollateralInitConfigParams)]
+#[instruction(config: SundialCollateralConfigParams)]
 pub struct ChangeCollateralConfig<'info> {
     #[account(mut, has_one=owner @ SundialError::InvalidOwner)]
     pub sundial_collateral: Account<'info, SundialCollateral>,

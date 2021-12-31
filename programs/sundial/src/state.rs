@@ -26,6 +26,7 @@ pub struct Sundial {
     pub port_lending_program: Pubkey,
     /// Configuration for the given [Sundial].
     pub config: SundialConfig,
+    /// The owner for the set of [Sundial]s and [SundialCollateral]s.
     pub owner: Pubkey,
     /// Space in case we need to add more data.
     pub _padding: [u64; 18],
@@ -105,23 +106,26 @@ pub struct SundialBumps {
 pub struct SundialCollateral {
     pub bumps: SundialCollateralBumps,
     pub sundial_collateral_config: SundialCollateralConfig,
+    /// The Port reserve that the LP tokens belong to.
     pub port_collateral_reserve: Pubkey,
-    pub port_lp_price: [u64; 3], //Decimal
-    pub last_update: LastUpdate,
+    /// The current price of the Port LP tokens in USD.
+    pub port_lp_price: [u64; 3], // Decimal
+    /// The last updated slot.
+    pub last_updated_slot: LastUpdatedSlot,
     pub owner: Pubkey,
     pub _padding: [u64; 32],
 }
 
 #[derive(AnchorDeserialize, AnchorSerialize, Debug, PartialEq, Clone, Default)]
-pub struct LastUpdate {
+pub struct LastUpdatedSlot {
     pub slot: u64,
 }
-impl From<u64> for LastUpdate {
+impl From<u64> for LastUpdatedSlot {
     fn from(slot: u64) -> Self {
-        LastUpdate { slot }
+        LastUpdatedSlot { slot }
     }
 }
-impl LastUpdate {
+impl LastUpdatedSlot {
     pub fn check_stale(&self, clock: &Clock, tol: u64, msg: &str) -> ProgramResult {
         invariant!(self.slot >= clock.slot);
         invariant!(clock.slot - self.slot <= tol, SundialError::StateStale, msg);
@@ -174,10 +178,15 @@ impl LiquidationConfig {
 #[account]
 #[derive(Debug, PartialEq)]
 pub struct SundialProfile {
+    /// The owner of the [SundialProfile].
     pub user: Pubkey,
-    pub sundial_owner: Pubkey,
-    pub last_update: LastUpdate,
+    /// The admin of the set of [Sundial]s.
+    pub admin: Pubkey,
+    /// The last slot the price of the asset got updated.
+    pub last_update: LastUpdatedSlot,
+    /// A list of [SundialProfileCollateral].
     pub collaterals: Vec<SundialProfileCollateral>,
+    /// A list of [SundialProfileLoan].
     pub loans: Vec<SundialProfileLoan>,
     pub _padding: [u64; 32],
 }
@@ -189,7 +198,7 @@ impl SundialProfile {
             .try_fold(Decimal::zero(), |acc_bp, c| {
                 c.config
                     .ltv
-                    .get_bp(Decimal(U192(c.collateral_asset.value)))
+                    .get_bp(Decimal(U192(c.asset.value)))
                     .and_then(|bp| acc_bp.try_add(bp))
             })
     }
@@ -197,7 +206,7 @@ impl SundialProfile {
     #[inline(always)]
     pub fn get_borrowed_value(&self) -> Result<Decimal, ProgramError> {
         self.loans.iter().try_fold(Decimal::zero(), |acc_bv, l| {
-            acc_bv.try_add(Decimal(U192(l.minted_asset.value)))
+            acc_bv.try_add(Decimal(U192(l.asset.value)))
         })
     }
 
@@ -208,7 +217,7 @@ impl SundialProfile {
             .try_fold(Decimal::zero(), |acc_lm, c| {
                 c.config
                     .liquidation_config
-                    .get_liquidation_margin(Decimal(U192(c.collateral_asset.value)))
+                    .get_liquidation_margin(Decimal(U192(c.asset.value)))
                     .and_then(|lm| acc_lm.try_add(lm))
             })
     }
@@ -245,7 +254,7 @@ impl Default for SundialProfile {
             last_update: 0.into(),
             collaterals: vec![SundialProfileCollateral::default(); 1],
             loans: vec![SundialProfileLoan::default(); 9],
-            sundial_owner: Default::default(),
+            admin: Default::default(),
             _padding: [0; 32],
         }
     }
@@ -253,7 +262,7 @@ impl Default for SundialProfile {
 
 #[derive(AnchorDeserialize, AnchorSerialize, Debug, PartialEq, Clone, Default)]
 pub struct SundialProfileCollateral {
-    pub collateral_asset: AssetInfo,
+    pub asset: AssetInfo,
     pub sundial_collateral: Pubkey,
     pub config: SundialProfileCollateralConfig,
 }
@@ -319,13 +328,14 @@ impl SundialProfileCollateral {
             &mut sundial_collateral_info.try_borrow_mut_data()?.as_ref(),
         )?;
 
-        sundial_collateral.last_update.check_stale(
+        sundial_collateral.last_updated_slot.check_stale(
             clock,
             SUNDIAL_COLLATERAL_STALE_TOL,
             "Sundial Collateral Is Stale",
         )?;
-        self.collateral_asset.value = sundial_collateral.port_lp_price;
+        self.asset.value = sundial_collateral.port_lp_price;
         self.config = sundial_collateral.sundial_collateral_config.into();
+
         Ok(())
     }
 
@@ -334,13 +344,13 @@ impl SundialProfileCollateral {
         sundial_collateral: &Account<SundialCollateral>,
         clock: &Clock,
     ) -> Result<Self, ProgramError> {
-        sundial_collateral.last_update.check_stale(
+        sundial_collateral.last_updated_slot.check_stale(
             clock,
             SUNDIAL_COLLATERAL_STALE_TOL,
             "Sundial Collateral Is Stale",
         )?;
         Ok(SundialProfileCollateral {
-            collateral_asset: AssetInfo {
+            asset: AssetInfo {
                 amount,
                 value: sundial_collateral.port_lp_price,
             },
@@ -366,10 +376,10 @@ impl From<SundialCollateralConfig> for SundialProfileCollateralConfig {
 }
 #[derive(AnchorDeserialize, AnchorSerialize, Debug, PartialEq, Clone, Default)]
 pub struct SundialProfileLoan {
-    pub minted_asset: AssetInfo,
+    pub asset: AssetInfo,
     pub oracle: Pubkey,
-    pub mint_pubkey: Pubkey,
-    pub end_minting_unix_timestamp: i64,
+    pub mint: Pubkey,
+    pub maturity_unix_timestamp: i64,
 }
 
 impl SundialProfileLoan {
@@ -381,10 +391,9 @@ impl SundialProfileLoan {
         );
         let market_price = log_then_prop_err!(get_oracle_price(oracle, clock));
 
-        self.minted_asset.value =
-            log_then_prop_err!(market_price.try_mul(self.minted_asset.amount))
-                .0
-                 .0;
+        self.asset.value = log_then_prop_err!(market_price.try_mul(self.asset.amount))
+            .0
+             .0;
 
         Ok(())
     }
@@ -398,18 +407,18 @@ impl SundialProfileLoan {
     ) -> Result<Self, ProgramError> {
         let market_price = log_then_prop_err!(get_oracle_price(oracle, clock));
         Ok(SundialProfileLoan {
-            minted_asset: AssetInfo {
+            asset: AssetInfo {
                 amount,
                 value: market_price.try_mul(amount)?.0 .0,
             },
             oracle: oracle.key(),
-            mint_pubkey,
-            end_minting_unix_timestamp: end_timestamp,
+            mint: mint_pubkey,
+            maturity_unix_timestamp: end_timestamp,
         })
     }
 
     #[inline(always)]
     pub fn is_overtime(&self, current_ts: i64) -> bool {
-        self.end_minting_unix_timestamp <= current_ts
+        self.maturity_unix_timestamp <= current_ts
     }
 }
