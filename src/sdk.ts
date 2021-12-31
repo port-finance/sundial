@@ -1,19 +1,24 @@
-import { Programs, SUNDIAL_ADDRESSES, SUNDIAL_IDLS } from "./constants";
-import type { Provider } from "@saberhq/solana-contrib";
+import { Programs, SUNDIAL_ADDRESSES, SUNDIAL_IDLS } from './constants';
+import type { Provider } from '@saberhq/solana-contrib';
 import {
   DEFAULT_PROVIDER_OPTIONS,
   SignerWallet,
   SolanaProvider,
-} from "@saberhq/solana-contrib";
-import { ConfirmOptions, Signer } from "@solana/web3.js";
-import mapValues from "lodash.mapvalues";
-import { Address, Program, Provider as AnchorProvider, Idl } from "@project-serum/anchor";
-import { SundialWrapper } from "./wrappers/sundial";
+} from '@saberhq/solana-contrib';
+import { ConfirmOptions, Signer } from '@solana/web3.js';
+import mapValues from 'lodash.mapvalues';
+import {
+  Address,
+  Program,
+  Provider as AnchorProvider,
+  Idl,
+} from '@project-serum/anchor';
+import { SundialWrapper } from './wrappers/sundial';
 
 export class SundialSDK {
   constructor(
     public readonly provider: Provider,
-    public readonly programs: Programs
+    public readonly programs: Programs,
   ) {}
 
   /**
@@ -25,11 +30,11 @@ export class SundialSDK {
       this.provider.connection,
       this.provider.broadcaster,
       wallet,
-      this.provider.opts
+      this.provider.opts,
     );
     return SundialSDK.load({
       provider,
-      addresses: mapValues(this.programs, (v) => v.programId),
+      addresses: mapValues(this.programs, v => v.programId),
     });
   }
 
@@ -62,14 +67,14 @@ export class SundialSDK {
         const anchorProvider = new AnchorProvider(
           provider.connection,
           provider.wallet,
-          confirmOptions
+          confirmOptions,
         );
         return new Program(
           idl as Idl,
           address,
-          anchorProvider
+          anchorProvider,
         ) as unknown as Program;
-      }
+      },
     ) as unknown as Programs;
     return new SundialSDK(provider, programs);
   }

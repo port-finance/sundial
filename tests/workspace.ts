@@ -1,13 +1,13 @@
-import "chai-bn";
+import 'chai-bn';
 
-import * as anchor from "@project-serum/anchor";
-import { chaiSolana } from "@saberhq/chai-solana";
-import { SolanaProvider } from "@saberhq/solana-contrib";
-import chai from "chai";
+import * as anchor from '@project-serum/anchor';
+import { chaiSolana } from '@saberhq/chai-solana';
+import { SolanaProvider } from '@saberhq/solana-contrib';
+import chai from 'chai';
 
-import type { Programs } from "../src";
-import { SundialSDK } from "../src/sdk";
-import { BN } from "@project-serum/anchor";
+import type { Programs } from '../src';
+import { SundialSDK } from '../src/sdk';
+import { BN } from '@project-serum/anchor';
 
 chai.use(chaiSolana);
 
@@ -30,4 +30,3 @@ export const makeSDK = (): SundialSDK => {
     provider,
   });
 };
-

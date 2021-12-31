@@ -1,1 +1,1 @@
-export * from './sundial'
+export * from './sundial';
