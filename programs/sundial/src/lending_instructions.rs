@@ -3,17 +3,17 @@ use crate::state::{Fee, LiquidityCap, SundialConfig};
 use crate::state::{Sundial, SundialBumps};
 use anchor_lang::prelude::*;
 use anchor_spl::token::{Mint, Token, TokenAccount};
-use port_anchor_adaptor::{Deposit as PortDeposit, PortLendingMarket, PortReserve, Redeem};
+use port_anchor_adaptor::{Deposit as PortDeposit, PortReserve, Redeem};
 
 #[derive(AnchorSerialize, AnchorDeserialize)]
-pub struct InitSundialConfigParams {
+pub struct SundialInitConfigParams {
     pub lending_fee: u8,
     pub borrow_fee: u8,
     pub liquidity_cap: u64,
 }
 
-impl From<InitSundialConfigParams> for SundialConfig {
-    fn from(config: InitSundialConfigParams) -> Self {
+impl From<SundialInitConfigParams> for SundialConfig {
+    fn from(config: SundialInitConfigParams) -> Self {
         SundialConfig {
             lending_fee: Fee {
                 bips: config.lending_fee,
@@ -28,8 +28,17 @@ impl From<InitSundialConfigParams> for SundialConfig {
         }
     }
 }
+
 #[derive(Accounts, Clone)]
-#[instruction(bumps: SundialBumps, duration_in_seconds: i64, port_lending_program: Pubkey, config: InitSundialConfigParams)]
+#[instruction(config: SundialInitConfigParams)]
+pub struct ChangeSundialConfig<'info> {
+    #[account(mut, has_one=owner @ SundialError::InvalidOwner)]
+    pub sundial: Account<'info, Sundial>,
+    #[account(mut)]
+    pub owner: Signer<'info>,
+}
+#[derive(Accounts, Clone)]
+#[instruction(bumps: SundialBumps, duration_in_seconds: i64, port_lending_program: Pubkey, config: SundialInitConfigParams)]
 pub struct InitializeSundial<'info> {
     #[account(init, payer=owner)]
     pub sundial: Account<'info, Sundial>,
@@ -45,10 +54,8 @@ pub struct InitializeSundial<'info> {
     pub yield_token_mint: Box<Account<'info, Mint>>,
     #[account(init, payer=owner, seeds = [sundial.key().as_ref(), b"fee_receiver"], bump = bumps.fee_receiver_bump, token::authority=sundial_authority, token::mint=principle_token_mint)]
     pub fee_receiver_wallet: Box<Account<'info, TokenAccount>>,
-    #[account(owner = port_lending_program, has_one=lending_market, constraint = !reserve.last_update.stale)]
+    #[account(owner=port_lending_program, constraint = !reserve.last_update.stale @ SundialError::ReserveIsNotRefreshed)]
     pub reserve: Box<Account<'info, PortReserve>>,
-    #[account(has_one=owner)]
-    pub lending_market: Box<Account<'info, PortLendingMarket>>,
     #[account(address = reserve.liquidity.mint_pubkey @ SundialError::InvalidPortLiquidityMint)]
     pub port_liquidity_mint: Box<Account<'info, Mint>>,
     #[account(address = reserve.collateral.mint_pubkey @ SundialError::InvalidPortLpMint)]

@@ -7,6 +7,9 @@ use solana_maths::{Decimal, TryDiv, TryMul};
 
 use vipers::unwrap_int;
 use vipers::VipersError;
+
+pub const SUNDIAL_COLLATERAL_STALE_TOL: u64 = 0;
+pub const SUNDIAL_PROFILE_STALE_TOL: u64 = 0;
 macro_rules! seeds {
     ($ctx:ident, $account: ident, $bump_name: ident) => {
         paste! {  &[&[

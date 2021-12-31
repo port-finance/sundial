@@ -1273,7 +1273,17 @@ dependencies = [
  "port-variable-rate-lending-instructions 0.3.0",
  "pyth-client",
  "solana-maths",
+ "sundial-derives",
  "vipers",
+]
+
+[[package]]
+name = "sundial-derives"
+version = "0.1.0"
+dependencies = [
+ "proc-macro2",
+ "quote",
+ "syn",
 ]
 
 [[package]]

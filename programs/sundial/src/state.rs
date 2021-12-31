@@ -2,10 +2,9 @@ use crate::error::SundialError;
 use anchor_lang::prelude::*;
 use anchor_spl::token::{mint_to, transfer, Mint, MintTo, Transfer};
 
-use crate::helpers::get_oracle_price;
-use port_anchor_adaptor::port_accessor::*;
+use crate::helpers::{get_oracle_price, SUNDIAL_COLLATERAL_STALE_TOL};
 use solana_maths::{Decimal, Rate, TryAdd, TryDiv, TryMul, TrySub, U192};
-use vipers::unwrap_int;
+use vipers::{invariant, unwrap_int};
 
 #[account]
 #[derive(Debug, PartialEq, Default)]
@@ -27,8 +26,9 @@ pub struct Sundial {
     pub port_lending_program: Pubkey,
     /// Configuration for the given [Sundial].
     pub config: SundialConfig,
+    pub owner: Pubkey,
     /// Space in case we need to add more data.
-    pub _padding: [u64; 22],
+    pub _padding: [u64; 18],
 }
 
 #[derive(AnchorDeserialize, AnchorSerialize, Debug, PartialEq, Clone, Default)]
@@ -106,7 +106,27 @@ pub struct SundialCollateral {
     pub bumps: SundialCollateralBumps,
     pub sundial_collateral_config: SundialCollateralConfig,
     pub port_collateral_reserve: Pubkey,
+    pub port_lp_price: [u64; 3], //Decimal
+    pub last_update: LastUpdate,
+    pub owner: Pubkey,
     pub _padding: [u64; 32],
+}
+
+#[derive(AnchorDeserialize, AnchorSerialize, Debug, PartialEq, Clone, Default)]
+pub struct LastUpdate {
+    pub slot: u64,
+}
+impl From<u64> for LastUpdate {
+    fn from(slot: u64) -> Self {
+        LastUpdate { slot }
+    }
+}
+impl LastUpdate {
+    pub fn check_stale(&self, clock: &Clock, tol: u64, msg: &str) -> ProgramResult {
+        invariant!(self.slot >= clock.slot);
+        invariant!(clock.slot - self.slot <= tol, SundialError::StateStale, msg);
+        Ok(())
+    }
 }
 
 #[derive(AnchorDeserialize, AnchorSerialize, Debug, PartialEq, Clone, Default)]
@@ -155,9 +175,10 @@ impl LiquidationConfig {
 #[derive(Debug, PartialEq)]
 pub struct SundialProfile {
     pub user: Pubkey,
-    pub last_update: u64,
-    pub collaterals: Vec<SundialBorrowingCollateral>,
-    pub loans: Vec<SundialBorrowingLoan>,
+    pub sundial_owner: Pubkey,
+    pub last_update: LastUpdate,
+    pub collaterals: Vec<SundialProfileCollateral>,
+    pub loans: Vec<SundialProfileLoan>,
     pub _padding: [u64; 32],
 }
 impl SundialProfile {
@@ -211,8 +232,8 @@ impl SundialProfile {
     pub fn get_mut_collaterals_and_loans(
         &mut self,
     ) -> (
-        &mut Vec<SundialBorrowingCollateral>,
-        &mut Vec<SundialBorrowingLoan>,
+        &mut Vec<SundialProfileCollateral>,
+        &mut Vec<SundialProfileLoan>,
     ) {
         (&mut self.collaterals, &mut self.loans)
     }
@@ -221,19 +242,20 @@ impl Default for SundialProfile {
     fn default() -> Self {
         SundialProfile {
             user: Default::default(),
-            last_update: 0,
-            collaterals: vec![SundialBorrowingCollateral::default(); 1],
-            loans: vec![SundialBorrowingLoan::default(); 9],
+            last_update: 0.into(),
+            collaterals: vec![SundialProfileCollateral::default(); 1],
+            loans: vec![SundialProfileLoan::default(); 9],
+            sundial_owner: Default::default(),
             _padding: [0; 32],
         }
     }
 }
 
 #[derive(AnchorDeserialize, AnchorSerialize, Debug, PartialEq, Clone, Default)]
-pub struct SundialBorrowingCollateral {
+pub struct SundialProfileCollateral {
     pub collateral_asset: AssetInfo,
-    pub reserve: Pubkey,
-    pub config: SundialBorrowingCollateralConfig,
+    pub sundial_collateral: Pubkey,
+    pub config: SundialProfileCollateralConfig,
 }
 #[derive(AnchorDeserialize, AnchorSerialize, Debug, PartialEq, Clone, Default)]
 pub struct AssetInfo {
@@ -281,76 +303,76 @@ impl AssetInfo {
         self.update_amount(new_amount.try_floor_u64()?)
     }
 }
-impl SundialBorrowingCollateral {
-    pub fn refresh_price(&mut self, reserve_info: &AccountInfo) -> ProgramResult {
+impl SundialProfileCollateral {
+    pub fn refresh_price(
+        &mut self,
+        sundial_collateral_info: &AccountInfo,
+        clock: &Clock,
+    ) -> ProgramResult {
         vipers::assert_keys_eq!(
-            reserve_info.key,
-            self.reserve,
+            sundial_collateral_info.key,
+            self.sundial_collateral,
             "Invalid reserve given for refreshing"
         );
-        vipers::invariant!(
-            !is_reserve_stale(reserve_info)?,
-            SundialError::ReserveIsNotRefreshed,
-            "Reserve should be refreshed before passing in to deposit"
-        );
 
-        let liquidity_price = reserve_market_price(reserve_info)?;
-        let exchange_rate = exchange_rate(reserve_info)?;
-        let deposit_value = liquidity_price
-            .try_mul(exchange_rate.collateral_to_liquidity(self.collateral_asset.amount)?)?;
-        self.collateral_asset.value = deposit_value.0 .0;
+        let sundial_collateral: SundialCollateral = anchor_lang::AnchorDeserialize::deserialize(
+            &mut sundial_collateral_info.try_borrow_mut_data()?.as_ref(),
+        )?;
+
+        sundial_collateral.last_update.check_stale(
+            clock,
+            SUNDIAL_COLLATERAL_STALE_TOL,
+            "Sundial Collateral Is Stale",
+        )?;
+        self.collateral_asset.value = sundial_collateral.port_lp_price;
+        self.config = sundial_collateral.sundial_collateral_config.into();
         Ok(())
     }
 
     pub fn init_collateral(
         amount: u64,
-        reserve_info: &AccountInfo,
-        config: SundialBorrowingCollateralConfig,
+        sundial_collateral: &Account<SundialCollateral>,
+        clock: &Clock,
     ) -> Result<Self, ProgramError> {
-        vipers::invariant!(
-            !is_reserve_stale(reserve_info)?,
-            SundialError::ReserveIsNotRefreshed,
-            "Reserve should be refreshed before passing in to deposit"
-        );
-        let liquidity_price = reserve_market_price(reserve_info)?;
-        let exchange_rate = exchange_rate(reserve_info)?;
-        let deposit_value =
-            liquidity_price.try_mul(exchange_rate.collateral_to_liquidity(amount)?)?;
-
-        Ok(SundialBorrowingCollateral {
+        sundial_collateral.last_update.check_stale(
+            clock,
+            SUNDIAL_COLLATERAL_STALE_TOL,
+            "Sundial Collateral Is Stale",
+        )?;
+        Ok(SundialProfileCollateral {
             collateral_asset: AssetInfo {
                 amount,
-                value: deposit_value.0 .0,
+                value: sundial_collateral.port_lp_price,
             },
-            reserve: reserve_info.key(),
-            config,
+            sundial_collateral: sundial_collateral.key(),
+            config: sundial_collateral.sundial_collateral_config.clone().into(),
         })
     }
 }
 
 #[derive(AnchorDeserialize, AnchorSerialize, Debug, PartialEq, Clone, Default)]
-pub struct SundialBorrowingCollateralConfig {
+pub struct SundialProfileCollateralConfig {
     pub ltv: LTV,
     pub liquidation_config: LiquidationConfig,
 }
 
-impl From<SundialCollateralConfig> for SundialBorrowingCollateralConfig {
+impl From<SundialCollateralConfig> for SundialProfileCollateralConfig {
     fn from(config: SundialCollateralConfig) -> Self {
-        SundialBorrowingCollateralConfig {
+        SundialProfileCollateralConfig {
             ltv: config.ltv,
             liquidation_config: config.liquidation_config,
         }
     }
 }
 #[derive(AnchorDeserialize, AnchorSerialize, Debug, PartialEq, Clone, Default)]
-pub struct SundialBorrowingLoan {
+pub struct SundialProfileLoan {
     pub minted_asset: AssetInfo,
     pub oracle: Pubkey,
     pub mint_pubkey: Pubkey,
     pub end_minting_unix_timestamp: i64,
 }
 
-impl SundialBorrowingLoan {
+impl SundialProfileLoan {
     pub fn refresh_price(&mut self, oracle: &AccountInfo, clock: &Clock) -> ProgramResult {
         vipers::assert_keys_eq!(
             oracle.key,
@@ -375,7 +397,7 @@ impl SundialBorrowingLoan {
         end_timestamp: i64,
     ) -> Result<Self, ProgramError> {
         let market_price = log_then_prop_err!(get_oracle_price(oracle, clock));
-        Ok(SundialBorrowingLoan {
+        Ok(SundialProfileLoan {
             minted_asset: AssetInfo {
                 amount,
                 value: market_price.try_mul(amount)?.0 .0,

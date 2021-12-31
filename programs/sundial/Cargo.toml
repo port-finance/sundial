@@ -24,3 +24,4 @@ paste = "1.0.6"
 vipers = "1.5.5"
 pyth-client = "0.2.2"
 itertools = "0.10.1"
+sundial-derives = {path = "../../sundial-derives"}

@@ -37,4 +37,14 @@ pub enum SundialError {
     RepayTooMuchLoan,
     #[msg("Invalid Liquidation")]
     InvalidLiquidation,
+
+    //315
+    #[msg("InvalidOwner")]
+    InvalidOwner,
+    #[msg("InvalidProfileUser")]
+    InvalidProfileUser,
+    #[msg("Sundial's owner does not match the on in sundial profile")]
+    SundialOwnerNotMatch,
+    #[msg("The state is stale")]
+    StateStale,
 }
