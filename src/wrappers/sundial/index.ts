@@ -40,6 +40,73 @@ export class SundialWrapper {
     this.program = sdk.programs.Sundial;
   }
 
+  public setSundial(key: PublicKey): void {
+    this.sundial = key;
+  }
+
+  public async reloadSundial(): Promise<void> {
+    invariant(this.sundial, 'sundial key not set');
+    this.sundialData = await this.program.account.sundial.fetch(this.sundial);
+  }
+
+  public getSundial(): PublicKey {
+    invariant(this.sundial, 'sundial key not set');
+    return this.sundial;
+  }
+
+  public async getSundialAccountAndNounce(
+    name: string,
+  ): Promise<[PublicKey, number]> {
+    return await PublicKey.findProgramAddress(
+      [utils.bytes.utf8.encode(name)],
+      this.program.programId,
+    );
+  }
+
+  public async getSundialAuthorityAndNounce(): Promise<[PublicKey, number]> {
+    return await PublicKey.findProgramAddress(
+      [this.sundial.toBuffer(), utils.bytes.utf8.encode(AUTHORITY)],
+      this.program.programId,
+    );
+  }
+
+  public async getPrincipleMintAndNounce(): Promise<[PublicKey, number]> {
+    return await PublicKey.findProgramAddress(
+      [this.sundial.toBuffer(), utils.bytes.utf8.encode(PRINCIPLE_MINT_KEY)],
+      this.program.programId,
+    );
+  }
+
+  public async getYieldMintAndNounce(): Promise<[PublicKey, number]> {
+    return await PublicKey.findProgramAddress(
+      [this.sundial.toBuffer(), utils.bytes.utf8.encode(YIELD_MINT_KEY)],
+      this.program.programId,
+    );
+  }
+
+  public async getLiquidityTokenSupplyAndNounce(): Promise<
+    [PublicKey, number]
+  > {
+    return await PublicKey.findProgramAddress(
+      [this.sundial.toBuffer(), utils.bytes.utf8.encode(LIQUIDITY_KEY)],
+      this.program.programId,
+    );
+  }
+
+  public async getLPTokenSupplyAndNounce(): Promise<[PublicKey, number]> {
+    return await PublicKey.findProgramAddress(
+      [this.sundial.toBuffer(), utils.bytes.utf8.encode(LP_KEY)],
+      this.program.programId,
+    );
+  }
+
+  public async getLendingFeeReceiverAndNounce(): Promise<[PublicKey, number]> {
+    return await PublicKey.findProgramAddress(
+      [this.sundial.toBuffer(), utils.bytes.utf8.encode(FEE_RECEIVER_KEY)],
+      this.program.programId,
+    );
+  }
+
   public async initSundialMarket({
     sundialMarketBase,
     owner,
@@ -61,7 +128,7 @@ export class SundialWrapper {
     return tx.addSigners(sundialMarketBase);
   }
 
-  public async createSundialLending({
+  public async createSundial({
     sundialBase,
     owner,
     durationInSeconds,
@@ -143,73 +210,6 @@ export class SundialWrapper {
       ),
     ]);
     return tx.addSigners(sundialBase);
-  }
-
-  public setSundial(key: PublicKey): void {
-    this.sundial = key;
-  }
-
-  public async reloadSundial(): Promise<void> {
-    invariant(this.sundial, 'sundial key not set');
-    this.sundialData = await this.program.account.sundial.fetch(this.sundial);
-  }
-
-  public getSundial(): PublicKey {
-    invariant(this.sundial, 'sundial key not set');
-    return this.sundial;
-  }
-
-  public async getSundialAccountAndNounce(
-    name: string,
-  ): Promise<[PublicKey, number]> {
-    return await PublicKey.findProgramAddress(
-      [utils.bytes.utf8.encode(name)],
-      this.program.programId,
-    );
-  }
-
-  public async getSundialAuthorityAndNounce(): Promise<[PublicKey, number]> {
-    return await PublicKey.findProgramAddress(
-      [this.sundial.toBuffer(), utils.bytes.utf8.encode(AUTHORITY)],
-      this.program.programId,
-    );
-  }
-
-  public async getPrincipleMintAndNounce(): Promise<[PublicKey, number]> {
-    return await PublicKey.findProgramAddress(
-      [this.sundial.toBuffer(), utils.bytes.utf8.encode(PRINCIPLE_MINT_KEY)],
-      this.program.programId,
-    );
-  }
-
-  public async getYieldMintAndNounce(): Promise<[PublicKey, number]> {
-    return await PublicKey.findProgramAddress(
-      [this.sundial.toBuffer(), utils.bytes.utf8.encode(YIELD_MINT_KEY)],
-      this.program.programId,
-    );
-  }
-
-  public async getLiquidityTokenSupplyAndNounce(): Promise<
-    [PublicKey, number]
-  > {
-    return await PublicKey.findProgramAddress(
-      [this.sundial.toBuffer(), utils.bytes.utf8.encode(LIQUIDITY_KEY)],
-      this.program.programId,
-    );
-  }
-
-  public async getLPTokenSupplyAndNounce(): Promise<[PublicKey, number]> {
-    return await PublicKey.findProgramAddress(
-      [this.sundial.toBuffer(), utils.bytes.utf8.encode(LP_KEY)],
-      this.program.programId,
-    );
-  }
-
-  public async getLendingFeeReceiverAndNounce(): Promise<[PublicKey, number]> {
-    return await PublicKey.findProgramAddress(
-      [this.sundial.toBuffer(), utils.bytes.utf8.encode(FEE_RECEIVER_KEY)],
-      this.program.programId,
-    );
   }
 
   public async mintPrincipleAndYieldTokens({

@@ -46,15 +46,9 @@ export async function createSundialMarket(
   provider: Provider,
   owner?: PublicKey,
 ): Promise<Keypair> {
-  const sundialMarket = Keypair.generate();
-  const tx = await sundialWrapper.initSundialMarket({
-    sundialMarketBase: sundialMarket,
-    owner: owner ? owner : provider.wallet.publicKey,
-    payer: provider.wallet.publicKey,
-  });
-  await expectTX(tx, 'init sundial market').to.be.fulfilled;
-  return sundialMarket;
+
 }
+
 export async function createLendingMarket(
   provider: Provider,
 ): Promise<Keypair> {

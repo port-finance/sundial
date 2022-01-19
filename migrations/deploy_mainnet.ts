@@ -40,7 +40,7 @@ module.exports = async function (provider) {
     }
   );
   createMarketTx.confirm();
-  const createTx = await sundialSDK.sundial.createSundialLending({
+  const createTx = await sundialSDK.sundial.createSundial({
     sundialBase: sundialKeypair,
     owner: provider.wallet.publicKey,
     durationInSeconds: new anchor.BN(3 * MONTH_IN_SECS), // 3 months

@@ -42,7 +42,6 @@ describe('sundial', () => {
   let liquidityMint: PublicKey;
   let liquidityVault: PublicKey;
   let parsedReserve: ParsedAccount<ReserveData>;
-  let sundialMarketBase: Keypair;
 
   before('Initialize Lending Market', async () => {
     lendingMarketKP = await createLendingMarket(provider);
@@ -65,14 +64,24 @@ describe('sundial', () => {
       account: await provider.connection.getAccountInfo(reserveState.address),
     };
     parsedReserve = ReserveParser(raw);
-    sundialMarketBase = await createSundialMarket(sundialSDK, provider);
   });
   const FEE_IN_BIPS = 10;
   const MAX_LIQUIDITY_CAP = new BN(MAX_U64.toString());
+
+  const sundialMarketBase = Keypair.generate();
+  it('Initialize Sundial Market', async () => {
+    const tx = await sundialSDK.initSundialMarket({
+      sundialMarketBase,
+      owner: provider.wallet.publicKey,
+      payer: provider.wallet.publicKey,
+    });
+    await expectTX(tx, 'Init sundial market').to.be.fulfilled;
+  })
+
   const sundialBase = Keypair.generate();
   it('Initialize Sundial', async () => {
     const duration = new BN(3); // 3 seconds from now
-    const createTx = await sundialSDK.createSundialLending({
+    const createTx = await sundialSDK.createSundial({
       sundialBase: sundialBase,
       owner: provider.wallet.publicKey,
       durationInSeconds: duration, // 8th of August 2028

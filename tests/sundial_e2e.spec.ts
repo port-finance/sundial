@@ -52,7 +52,6 @@ describe('Sundial Interacting with Port Reserve that has positive APY', () => {
   const utilizationRate =
     portBorrowAmount.toNumber() / portDepositAmount.toNumber();
   let lendingMarketKP: Keypair;
-  let sundialMarketBase: Keypair;
   let reserveState: ReserveState;
   let liquidityMint: PublicKey;
   let liquidityVault: PublicKey;
@@ -143,15 +142,23 @@ describe('Sundial Interacting with Port Reserve that has positive APY', () => {
       });
     borrowTx.add(...borrowObligationCollateralIxs);
     await provider.send(borrowTx);
-
-    sundialMarketBase = await createSundialMarket(sundialSDK, provider);
   });
+
+  const sundialMarketBase = Keypair.generate();
+  it('Initialize Sundial Market', async () => {
+    const tx = await sundialSDK.initSundialMarket({
+      sundialMarketBase,
+      owner: provider.wallet.publicKey,
+      payer: provider.wallet.publicKey,
+    });
+    await expectTX(tx, 'Init sundial market').to.be.fulfilled;
+  })
 
   const sundialBase = Keypair.generate();
   const sundialDuration = 15;
   it('Initialize Sundial', async () => {
     const duration = new BN(sundialDuration); // 15 seconds from now
-    const createTx = await sundialSDK.createSundialLending({
+    const createTx = await sundialSDK.createSundial({
       sundialBase: sundialBase,
       owner: provider.wallet.publicKey,
       durationInSeconds: duration, // 8th of August 2028
