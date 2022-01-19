@@ -17,8 +17,6 @@ import {
   TOKEN_MINT_LEN,
 } from './constants';
 import { RESERVE_INIT_LIQUIDITY } from './workspace';
-import { SundialWrapper } from '../src';
-import { expectTX } from '@saberhq/chai-solana';
 
 export const createAccount = async (
   provider: Provider,
@@ -40,14 +38,6 @@ export const createAccount = async (
   await provider.send(createTx, [newAccount]);
   return newAccount;
 };
-
-export async function createSundialMarket(
-  sundialWrapper: SundialWrapper,
-  provider: Provider,
-  owner?: PublicKey,
-): Promise<Keypair> {
-
-}
 
 export async function createLendingMarket(
   provider: Provider,

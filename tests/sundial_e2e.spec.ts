@@ -16,7 +16,6 @@ import { expect } from 'chai';
 import {
   createDefaultReserve,
   createLendingMarket,
-  createSundialMarket,
   ReserveState,
 } from './utils';
 import {
@@ -152,7 +151,7 @@ describe('Sundial Interacting with Port Reserve that has positive APY', () => {
       payer: provider.wallet.publicKey,
     });
     await expectTX(tx, 'Init sundial market').to.be.fulfilled;
-  })
+  });
 
   const sundialBase = Keypair.generate();
   const sundialDuration = 15;
