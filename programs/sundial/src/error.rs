@@ -5,9 +5,7 @@ pub enum SundialError {
     // 300
     #[msg("End Time Earlier Than CurrentTime")]
     EndTimeTooEarly,
-    #[msg("Invalid Port Liquidity Mint")]
     InvalidPortLiquidityMint,
-    #[msg("Invalid Port Lp Mint")]
     InvalidPortLpMint,
     #[msg("Please refresh reserve before deposit")]
     ReserveIsNotRefreshed,
@@ -19,32 +17,30 @@ pub enum SundialError {
     NotEndYet,
     #[msg("Contract already end")]
     AlreadyEnd,
-    #[msg("ExceedLiquidityCap")]
     ExceedLiquidityCap,
-    #[msg("InvalidOracleConfig")]
     InvalidOracleConfig,
     #[msg("Reserve should be passed in")]
     ReserveNeeded,
 
     //310
-    #[msg("InvalidMintAmount")]
     InvalidMintAmount,
     #[msg("Oracle should be passed in")]
     OracleNeeded,
-    #[msg("Withdrawing too much collateral")]
     WithdrawTooMuchCollateral,
-    #[msg("Repaying too much loan")]
     RepayTooMuchLoan,
-    #[msg("Invalid Liquidation")]
     InvalidLiquidation,
 
     //315
-    #[msg("InvalidOwner")]
     InvalidOwner,
-    #[msg("InvalidProfileUser")]
     InvalidProfileUser,
-    #[msg("Sundial's owner does not match the on in sundial profile")]
-    SundialOwnerNotMatch,
+    #[msg("Sundial's market does not match the on in sundial profile")]
+    SundialMarketNotMatch,
     #[msg("The state is stale")]
     StateStale,
+    OwnerNotSigned,
+
+    //320
+    InvalidPortReserve,
+    InvalidTokenProgram,
+    InvalidPortLendingProgram,
 }

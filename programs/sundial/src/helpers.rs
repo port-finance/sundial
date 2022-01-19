@@ -3,7 +3,7 @@ use anchor_lang::prelude::*;
 use anchor_spl::token::{MintTo, Transfer};
 use pyth_client::PriceType;
 use pyth_client::{cast, Price};
-use solana_maths::{Decimal, TryDiv, TryMul};
+use solana_maths::{Decimal, Rate, TryDiv, TryMul, U128, U192};
 
 use vipers::unwrap_int;
 use vipers::VipersError;
@@ -83,7 +83,7 @@ macro_rules! log_then_prop_err {
     };
 }
 
-pub fn get_oracle_price(oracle: &AccountInfo, clock: &Clock) -> Result<Decimal, ProgramError> {
+pub fn get_pyth_oracle_price(oracle: &AccountInfo, clock: &Clock) -> Result<Decimal, ProgramError> {
     const STALE_AFTER_SLOTS_ELAPSED: u64 = 10;
 
     let pyth_data = oracle.try_borrow_data()?;
@@ -143,4 +143,36 @@ where
         elems.push(default()?);
         Ok(())
     }
+}
+
+pub trait CheckSundialProfileStale {
+    fn check_sundial_profile_stale(&self) -> ProgramResult;
+}
+
+pub trait CheckSundialOwner {
+    fn check_sundial_owner(&self) -> ProgramResult;
+}
+
+pub trait CheckSundialMarketOwner {
+    fn check_sundial_market_owner(&self) -> ProgramResult;
+}
+
+pub trait CheckSundialProfileMarket {
+    fn check_sundial_profile_market(&self) -> ProgramResult;
+}
+
+macro_rules! get_raw_from_uint {
+    ($x: expr) => {
+        $x.0 .0
+    };
+}
+
+#[inline(always)]
+pub fn raw_to_decimal(x: [u64; 3]) -> Decimal {
+    Decimal(U192(x))
+}
+
+#[inline(always)]
+pub fn raw_to_rate(x: [u64; 2]) -> Rate {
+    Rate(U128(x))
 }

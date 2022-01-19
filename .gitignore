@@ -16,9 +16,6 @@ lerna-debug.log
 node_modules
 .eslintcache
 
-# Ignore submodule dependencies
-deps
-
 # VM
 .vagrant/
 test-ledger/
@@ -37,3 +34,5 @@ site/
 !.yarn/sdks
 !.yarn/versions
 .pnp.*
+
+deps/*.so

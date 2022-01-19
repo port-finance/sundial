@@ -15,6 +15,7 @@ import { expect } from 'chai';
 import {
   createDefaultReserve,
   createLendingMarket,
+  createSundialMarket,
   ReserveState,
 } from './utils';
 import {
@@ -41,6 +42,8 @@ describe('sundial', () => {
   let liquidityMint: PublicKey;
   let liquidityVault: PublicKey;
   let parsedReserve: ParsedAccount<ReserveData>;
+  let sundialMarketBase: Keypair;
+
   before('Initialize Lending Market', async () => {
     lendingMarketKP = await createLendingMarket(provider);
     const [mintPubkey, vaultPubkey] = await createMintAndVault(
@@ -62,6 +65,7 @@ describe('sundial', () => {
       account: await provider.connection.getAccountInfo(reserveState.address),
     };
     parsedReserve = ReserveParser(raw);
+    sundialMarketBase = await createSundialMarket(sundialSDK, provider);
   });
   const FEE_IN_BIPS = 10;
   const MAX_LIQUIDITY_CAP = new BN(MAX_U64.toString());
@@ -74,6 +78,8 @@ describe('sundial', () => {
       durationInSeconds: duration, // 8th of August 2028
       liquidityMint: liquidityMint,
       reserve: parsedReserve,
+      sundialMarket: sundialMarketBase.publicKey,
+      oracle: PublicKey.default,
       lendingFeeInBips: FEE_IN_BIPS,
       liquidityCap: MAX_LIQUIDITY_CAP,
     });

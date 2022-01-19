@@ -1,9 +1,11 @@
 use crate::error::*;
-use crate::state::{Fee, LiquidityCap, SundialConfig};
+use crate::helpers::{CheckSundialMarketOwner, CheckSundialOwner};
+use crate::state::{Fee, LiquidityCap, SundialConfig, SundialMarket};
 use crate::state::{Sundial, SundialBumps};
 use anchor_lang::prelude::*;
 use anchor_spl::token::{Mint, Token, TokenAccount};
 use port_anchor_adaptor::{Deposit as PortDeposit, PortReserve, Redeem};
+use sundial_derives::{validates, CheckSundialMarketOwner, CheckSundialOwner};
 
 #[derive(AnchorSerialize, AnchorDeserialize)]
 pub struct SundialInitConfigParams {
@@ -30,15 +32,29 @@ impl From<SundialInitConfigParams> for SundialConfig {
 }
 
 #[derive(Accounts, Clone)]
+#[instruction(owner: Pubkey)]
+pub struct InitializeSundialMarket<'info> {
+    #[account(init, payer=payer)]
+    pub sundial_market: Account<'info, SundialMarket>,
+    #[account(mut)]
+    pub payer: Signer<'info>,
+    pub system_program: Program<'info, System>,
+}
+
+#[validates(check_sundial_owner)]
+#[derive(Accounts, Clone, CheckSundialOwner)]
 #[instruction(config: SundialInitConfigParams)]
 pub struct ChangeSundialConfig<'info> {
-    #[account(mut, has_one=owner @ SundialError::InvalidOwner)]
+    #[account(mut)]
     pub sundial: Account<'info, Sundial>,
+    pub sundial_market: Account<'info, SundialMarket>,
     #[account(mut)]
     pub owner: Signer<'info>,
 }
-#[derive(Accounts, Clone)]
-#[instruction(bumps: SundialBumps, duration_in_seconds: i64, port_lending_program: Pubkey, config: SundialInitConfigParams)]
+
+#[validates(check_sundial_market_owner)]
+#[derive(Accounts, Clone, CheckSundialMarketOwner)]
+#[instruction(bumps: SundialBumps, duration_in_seconds: i64, port_lending_program: Pubkey, config: SundialInitConfigParams, oracle: Pubkey)]
 pub struct InitializeSundial<'info> {
     #[account(init, payer=owner)]
     pub sundial: Account<'info, Sundial>,
@@ -64,6 +80,7 @@ pub struct InitializeSundial<'info> {
     pub system_program: Program<'info, System>,
     #[account(mut)]
     pub owner: Signer<'info>,
+    pub sundial_market: Box<Account<'info, SundialMarket>>,
     pub rent: Sysvar<'info, Rent>,
     #[account(constraint = duration_in_seconds > 0 @ SundialError::EndTimeTooEarly)]
     pub clock: Sysvar<'info, Clock>,
@@ -89,9 +106,9 @@ pub struct PortAccounts<'info> {
 pub struct DepositAndMintTokens<'info> {
     #[account(
         constraint = sundial.end_unix_time_stamp > clock.unix_timestamp @ SundialError::AlreadyEnd ,
-        constraint = sundial.reserve == port_accounts.reserve.key(),
-        constraint = sundial.token_program == token_program.key(),
-        constraint = sundial.port_lending_program == port_accounts.port_lending_program.key())]
+        constraint = sundial.reserve == port_accounts.reserve.key() @ SundialError::InvalidPortReserve,
+        constraint = sundial.token_program == token_program.key() @ SundialError::InvalidTokenProgram,
+        constraint = sundial.port_lending_program == port_accounts.port_lending_program.key() @ SundialError::InvalidPortLendingProgram)]
     pub sundial: Account<'info, Sundial>,
     #[account(seeds=[sundial.key().as_ref(), b"authority"], bump=sundial.bumps.authority_bump)]
     pub sundial_authority: UncheckedAccount<'info>,
@@ -120,9 +137,9 @@ pub struct DepositAndMintTokens<'info> {
 pub struct RedeemLp<'info> {
     #[account(
         constraint = sundial.end_unix_time_stamp <= clock.unix_timestamp @ SundialError::NotEndYet,
-        constraint = sundial.reserve == port_accounts.reserve.key(),
-        constraint = sundial.token_program == token_program.key(),
-        constraint = sundial.port_lending_program == port_accounts.port_lending_program.key())]
+        constraint = sundial.reserve == port_accounts.reserve.key() @ SundialError::InvalidPortReserve,
+        constraint = sundial.token_program == token_program.key() @ SundialError::InvalidTokenProgram,
+        constraint = sundial.port_lending_program == port_accounts.port_lending_program.key() @ SundialError::InvalidPortLendingProgram)]
     pub sundial: Account<'info, Sundial>,
     #[account(seeds=[sundial.key().as_ref(), b"authority"], bump=sundial.bumps.authority_bump)]
     pub sundial_authority: UncheckedAccount<'info>,
@@ -141,7 +158,7 @@ pub struct RedeemLp<'info> {
 pub struct RedeemPrincipleToken<'info> {
     #[account(mut,
         constraint = sundial.end_unix_time_stamp <= clock.unix_timestamp @ SundialError::NotEndYet,
-        constraint = sundial.token_program == token_program.key())]
+        constraint = sundial.token_program == token_program.key() @ SundialError::InvalidTokenProgram)]
     pub sundial: Account<'info, Sundial>,
     #[account(seeds=[sundial.key().as_ref(), b"authority"], bump=sundial.bumps.authority_bump)]
     pub sundial_authority: UncheckedAccount<'info>,
@@ -165,7 +182,7 @@ pub struct RedeemPrincipleToken<'info> {
 pub struct RedeemYieldToken<'info> {
     #[account(
         constraint = sundial.end_unix_time_stamp <= clock.unix_timestamp @ SundialError::NotEndYet,
-        constraint = sundial.token_program == token_program.key())]
+        constraint = sundial.token_program == token_program.key() @ SundialError::InvalidTokenProgram)]
     pub sundial: Account<'info, Sundial>,
     #[account(seeds=[sundial.key().as_ref(), b"authority"], bump=sundial.bumps.authority_bump)]
     pub sundial_authority: UncheckedAccount<'info>,

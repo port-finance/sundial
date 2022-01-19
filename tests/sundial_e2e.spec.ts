@@ -16,6 +16,7 @@ import { expect } from 'chai';
 import {
   createDefaultReserve,
   createLendingMarket,
+  createSundialMarket,
   ReserveState,
 } from './utils';
 import {
@@ -51,6 +52,7 @@ describe('Sundial Interacting with Port Reserve that has positive APY', () => {
   const utilizationRate =
     portBorrowAmount.toNumber() / portDepositAmount.toNumber();
   let lendingMarketKP: Keypair;
+  let sundialMarketBase: Keypair;
   let reserveState: ReserveState;
   let liquidityMint: PublicKey;
   let liquidityVault: PublicKey;
@@ -141,6 +143,8 @@ describe('Sundial Interacting with Port Reserve that has positive APY', () => {
       });
     borrowTx.add(...borrowObligationCollateralIxs);
     await provider.send(borrowTx);
+
+    sundialMarketBase = await createSundialMarket(sundialSDK, provider);
   });
 
   const sundialBase = Keypair.generate();
@@ -153,6 +157,8 @@ describe('Sundial Interacting with Port Reserve that has positive APY', () => {
       durationInSeconds: duration, // 8th of August 2028
       liquidityMint: liquidityMint,
       reserve: parsedReserve,
+      sundialMarket: sundialMarketBase.publicKey,
+      oracle: PublicKey.default,
       lendingFeeInBips: FEE_IN_BIPS,
       liquidityCap: LIQUIDITY_CAP,
     });

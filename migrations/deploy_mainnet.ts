@@ -6,6 +6,8 @@ import { SolanaProvider } from "@saberhq/solana-contrib";
 import { SundialSDK } from "../src";
 import { Keypair, PublicKey } from "@solana/web3.js";
 import { ParsedAccount, ReserveData, ReserveParser } from "@port.finance/port-sdk";
+import {BN} from "@project-serum/anchor";
+import {MAX_U64} from "@saberhq/token-utils";
 
 const DAY_IN_SECS = 24 * 60 * 60;
 const MONTH_IN_SECS = 30 * DAY_IN_SECS;
@@ -29,12 +31,24 @@ module.exports = async function (provider) {
   };
   const reserveInfo = ReserveParser(raw) as ParsedAccount<ReserveData>;
   const sundialKeypair = Keypair.generate();
+  const sundialMarketBase = Keypair.generate();
+  const createMarketTx = await sundialSDK.sundial.initSundialMarket(
+    {
+      sundialMarketBase,
+      owner: provider.wallet.publicKey,
+      payer: provider.wallet.publicKey
+    }
+  );
+  createMarketTx.confirm();
   const createTx = await sundialSDK.sundial.createSundialLending({
     sundialBase: sundialKeypair,
     owner: provider.wallet.publicKey,
     durationInSeconds: new anchor.BN(3 * MONTH_IN_SECS), // 3 months
     liquidityMint: new PublicKey("EPjFWdd5AufqSSqeM2qN1xzybapC8G4wEGGkZwyTDt1v"),
+    oracle: PublicKey.default,
+    sundialMarket: sundialMarketBase.publicKey,
     reserve: reserveInfo,
+    liquidityCap: new BN(MAX_U64.toString())
   });
   console.log("sundialKeypair publicKey: ", sundialKeypair.publicKey.toString());
   await createTx.confirm();

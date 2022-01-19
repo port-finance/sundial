@@ -40,11 +40,34 @@ export class SundialWrapper {
     this.program = sdk.programs.Sundial;
   }
 
+  public async initSundialMarket({
+    sundialMarketBase,
+    owner,
+    payer,
+  }: {
+    sundialMarketBase: Keypair;
+    owner: PublicKey;
+    payer: PublicKey;
+  }): Promise<TransactionEnvelope> {
+    const tx = new TransactionEnvelope(this.sdk.provider, [
+      this.program.instruction.initializeSundialMarket(owner, {
+        accounts: {
+          sundialMarket: sundialMarketBase.publicKey,
+          payer,
+          systemProgram: SystemProgram.programId,
+        },
+      }),
+    ]);
+    return tx.addSigners(sundialMarketBase);
+  }
+
   public async createSundialLending({
     sundialBase,
     owner,
     durationInSeconds,
     liquidityMint,
+    oracle,
+    sundialMarket,
     reserve,
     liquidityCap,
     lendingFeeInBips = 0,
@@ -54,6 +77,8 @@ export class SundialWrapper {
     owner: PublicKey;
     durationInSeconds: BN;
     liquidityMint: PublicKey;
+    oracle: PublicKey;
+    sundialMarket: PublicKey;
     reserve: ParsedAccount<ReserveData>;
     liquidityCap: BN;
     lendingFeeInBips?: number;
@@ -94,6 +119,7 @@ export class SundialWrapper {
           borrowFee: borrowingFeeInBips,
           liquidityCap: liquidityCap,
         },
+        oracle,
         {
           accounts: {
             sundial: sundialBase.publicKey,
@@ -110,6 +136,7 @@ export class SundialWrapper {
             systemProgram: SystemProgram.programId,
             rent: SYSVAR_RENT_PUBKEY,
             owner,
+            sundialMarket,
             clock: SYSVAR_CLOCK_PUBKEY,
           },
         },
@@ -235,7 +262,6 @@ export class SundialWrapper {
           )[0],
           principleTokenMint: (await this.getPrincipleMintAndNounce())[0],
           yieldTokenMint: (await this.getYieldMintAndNounce())[0],
-
           userLiquidityWallet: userLiquidityWallet,
           userPrincipleTokenWallet: principleTokenAccount,
           userYieldTokenWallet: yieldTokenAccount,

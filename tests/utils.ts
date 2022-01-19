@@ -17,6 +17,8 @@ import {
   TOKEN_MINT_LEN,
 } from './constants';
 import { RESERVE_INIT_LIQUIDITY } from './workspace';
+import { SundialWrapper } from '../src';
+import { expectTX } from '@saberhq/chai-solana';
 
 export const createAccount = async (
   provider: Provider,
@@ -39,6 +41,20 @@ export const createAccount = async (
   return newAccount;
 };
 
+export async function createSundialMarket(
+  sundialWrapper: SundialWrapper,
+  provider: Provider,
+  owner?: PublicKey,
+): Promise<Keypair> {
+  const sundialMarket = Keypair.generate();
+  const tx = await sundialWrapper.initSundialMarket({
+    sundialMarketBase: sundialMarket,
+    owner: owner ? owner : provider.wallet.publicKey,
+    payer: provider.wallet.publicKey,
+  });
+  await expectTX(tx, 'init sundial market').to.be.fulfilled;
+  return sundialMarket;
+}
 export async function createLendingMarket(
   provider: Provider,
 ): Promise<Keypair> {

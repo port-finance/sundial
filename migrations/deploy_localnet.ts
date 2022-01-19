@@ -10,7 +10,9 @@ import { SundialSDK } from "../src";
 import { ReserveParser } from "@port.finance/port-sdk/lib/parsers/ReserveParser";
 import { ReserveData } from "@port.finance/port-sdk/lib/structs/ReserveData";
 import { ParsedAccount } from "@port.finance/port-sdk/lib/parsers/ParsedAccount";
-import { Keypair } from "@solana/web3.js";
+import {Keypair, PublicKey} from "@solana/web3.js";
+import {BN} from "@project-serum/anchor";
+import {MAX_U64} from "@saberhq/token-utils";
 
 module.exports = async function (provider) {
   anchor.setProvider(provider);
@@ -41,7 +43,15 @@ module.exports = async function (provider) {
   const sundialSDK = SundialSDK.load({
     provider: solanaProvider,
   });
-
+  const sundialMarketBase = Keypair.generate();
+  const createMarketTx = await sundialSDK.sundial.initSundialMarket(
+    {
+      sundialMarketBase,
+      owner: provider.wallet.publicKey,
+      payer: provider.wallet.publicKey
+    }
+  );
+  createMarketTx.confirm();
   const raw = {
     pubkey: reserveState.address,
     account: await provider.connection.getAccountInfo(reserveState.address),
@@ -53,7 +63,10 @@ module.exports = async function (provider) {
     owner: provider.wallet.publicKey,
     durationInSeconds: new anchor.BN(8640000), // 8th of August 2028
     liquidityMint: mintPubkey,
+    oracle: PublicKey.default,
+    sundialMarket: sundialMarketBase.publicKey,
     reserve: reserveInfo,
+    liquidityCap: new BN(MAX_U64.toString())
   });
   console.log("sundialKeypair publicKey: ", sundialKeypair.publicKey.toString());
   await createTx.confirm();
