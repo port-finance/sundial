@@ -237,7 +237,7 @@ pub mod sundial {
         let sundial_collateral = &mut ctx.accounts.sundial_collateral;
         sundial_collateral.bumps = bumps;
         sundial_collateral.port_collateral_reserve = ctx.accounts.port_collateral_reserve.key();
-        sundial_collateral.sundial_collateral_config = config.into();
+        sundial_collateral.config = config.into();
         sundial_collateral.sundial_market = ctx.accounts.sundial_market.key();
         sundial_collateral.token_program = ctx.accounts.token_program.key();
         Ok(())
@@ -290,11 +290,7 @@ pub mod sundial {
 
         let sundial_profile = &mut ctx.accounts.sundial_profile;
 
-        let liquidity_cap = ctx
-            .accounts
-            .sundial_collateral
-            .sundial_collateral_config
-            .liquidity_cap;
+        let liquidity_cap = ctx.accounts.sundial_collateral.config.liquidity_cap;
         log_then_prop_err!(
             liquidity_cap.check_balance(&mut ctx.accounts.sundial_collateral_port_lp_wallet)
         );
@@ -595,7 +591,7 @@ pub mod sundial {
         ctx: Context<ChangeCollateralConfig>,
         config: SundialCollateralConfigParams,
     ) -> ProgramResult {
-        ctx.accounts.sundial_collateral.sundial_collateral_config = config.into();
+        ctx.accounts.sundial_collateral.config = config.into();
         Ok(())
     }
 

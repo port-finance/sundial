@@ -124,7 +124,7 @@ pub struct SundialBumps {
 #[derive(Debug, PartialEq, Default)]
 pub struct SundialCollateral {
     pub bumps: SundialCollateralBumps,
-    pub sundial_collateral_config: SundialCollateralConfig,
+    pub config: SundialCollateralConfig,
     /// The Port reserve that the LP tokens belong to.
     pub port_collateral_reserve: Pubkey,
     /// The current price of the Port LP tokens in USD.
@@ -354,7 +354,7 @@ impl SundialProfileCollateral {
             sundial_collateral.port_lp_price
         ))
         .try_mul(self.asset.amount)));
-        self.config = sundial_collateral.sundial_collateral_config.into();
+        self.config = sundial_collateral.config.into();
 
         Ok(())
     }
@@ -378,7 +378,7 @@ impl SundialProfileCollateral {
                 .try_mul(amount))),
             },
             sundial_collateral: sundial_collateral.key(),
-            config: sundial_collateral.sundial_collateral_config.clone().into(),
+            config: sundial_collateral.config.clone().into(),
         })
     }
 }
