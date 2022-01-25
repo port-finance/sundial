@@ -65,6 +65,12 @@ jobs:
           npm i -g @project-serum/anchor-cli
       - name: Build Self
         run: anchor build
+      - name: Pull Submodule and Build
+        run: |
+          git submodule update --init
+          cd deps/mock-oracles
+          anchor build
+          cd ../../
       - name: Lint TS
         run: yarn lint:ci
       - name: Generate IDL
