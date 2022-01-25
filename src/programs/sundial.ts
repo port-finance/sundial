@@ -15,3 +15,8 @@ export type SundialData = Accounts['Sundial'];
 export type SundialCollateralData = Accounts['SundialCollateral'];
 export type SundialProfileData = Accounts['SundialProfile'];
 export type SundialProgram = SundialTypes['Program'];
+
+export type SundialAccountData =
+  | { type: 'sundial'; data?: SundialData }
+  | { type: 'sundialCollateral'; data?: SundialCollateralData }
+  | { type: 'sundialProfile'; data?: SundialProfileData };

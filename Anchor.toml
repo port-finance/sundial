@@ -12,5 +12,9 @@ wallet = "~/.config/solana/id.json"
 address = "Port7uDYB3wk6GJAw4KT1WpTeMtSu9bTcChBHkX2LfR"
 program = "./deps/port_finance_variable_rate_lending.so"
 
+[[test.genesis]]
+address = "FsJ3A3u2vn5cTVofAjvy6y5kwABJAqYWpe4975bi2epH"
+program = "./deps/mock-oracles/target/deploy/mock_oracles.so"
+
 [scripts]
 test = "ts-mocha -p ./tsconfig.json -t 1000000 tests/**/*.ts"

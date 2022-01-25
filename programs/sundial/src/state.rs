@@ -124,11 +124,13 @@ pub struct SundialBumps {
 #[derive(Debug, PartialEq, Default)]
 pub struct SundialCollateral {
     pub bumps: SundialCollateralBumps,
-    pub config: SundialCollateralConfig,
+    pub sundial_collateral_config: SundialCollateralConfig,
     /// The Port reserve that the LP tokens belong to.
     pub port_collateral_reserve: Pubkey,
+    //Mint of Port LP Collateral
+    pub collateral_mint: Pubkey,
     /// The current price of the Port LP tokens in USD.
-    pub port_lp_price: [u64; 3], // Decimal
+    pub collateral_price: [u64; 3], // Decimal
     /// The last updated slot.
     pub last_updated_slot: LastUpdatedSlot,
     pub sundial_market: Pubkey,
@@ -316,9 +318,10 @@ impl AssetInfo {
     }
 
     #[inline(always)]
-    pub fn reduce_amount(&mut self, decr_amount: u64) -> ProgramResult {
+    pub fn reduce_amount(&mut self, decr_amount: u64) -> Result<u64, ProgramError> {
         let new_amount = unwrap_int!(self.amount.checked_sub(decr_amount));
-        self.update_amount(new_amount)
+        self.update_amount(new_amount)?;
+        Ok(self.amount)
     }
 
     #[inline(always)]
@@ -351,10 +354,10 @@ impl SundialProfileCollateral {
             "Sundial Collateral Is Stale",
         )?;
         self.asset.total_value = get_raw_from_uint!(log_then_prop_err!(Decimal(U192(
-            sundial_collateral.port_lp_price
+            sundial_collateral.collateral_price
         ))
         .try_mul(self.asset.amount)));
-        self.config = sundial_collateral.config.into();
+        self.config = sundial_collateral.sundial_collateral_config.into();
 
         Ok(())
     }
@@ -373,12 +376,12 @@ impl SundialProfileCollateral {
             asset: AssetInfo {
                 amount,
                 total_value: get_raw_from_uint!(log_then_prop_err!(Decimal(U192(
-                    sundial_collateral.port_lp_price
+                    sundial_collateral.collateral_price
                 ))
                 .try_mul(amount))),
             },
             sundial_collateral: sundial_collateral.key(),
-            config: sundial_collateral.config.clone().into(),
+            config: sundial_collateral.sundial_collateral_config.clone().into(),
         })
     }
 }
@@ -417,6 +420,12 @@ impl SundialProfileLoan {
         self.asset.total_value =
             get_raw_from_uint!(log_then_prop_err!(market_price.try_mul(self.asset.amount)));
 
+        Ok(())
+    }
+
+    pub fn update_config(&mut self, sundial: &Sundial) -> ProgramResult {
+        self.oracle = sundial.oracle;
+        self.maturity_unix_timestamp = sundial.end_unix_time_stamp;
         Ok(())
     }
 

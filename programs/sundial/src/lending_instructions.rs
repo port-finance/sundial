@@ -1,11 +1,14 @@
 use crate::error::*;
-use crate::helpers::{CheckSundialMarketOwner, CheckSundialOwner};
+use crate::helpers::*;
 use crate::state::{Fee, LiquidityCap, SundialConfig, SundialMarket};
 use crate::state::{Sundial, SundialBumps};
 use anchor_lang::prelude::*;
 use anchor_spl::token::{Mint, Token, TokenAccount};
 use port_anchor_adaptor::{Deposit as PortDeposit, PortReserve, Redeem};
-use sundial_derives::{validates, CheckSundialMarketOwner, CheckSundialOwner};
+use sundial_derives::{
+    validates, CheckSundialAlreadyEnd, CheckSundialMarketOwner, CheckSundialNotEnd,
+    CheckSundialOwner,
+};
 
 #[derive(AnchorSerialize, AnchorDeserialize)]
 pub struct SundialInitConfigParams {
@@ -54,9 +57,13 @@ pub struct ChangeSundialConfig<'info> {
 
 #[validates(check_sundial_market_owner)]
 #[derive(Accounts, Clone, CheckSundialMarketOwner)]
-#[instruction(bumps: SundialBumps, duration_in_seconds: i64, port_lending_program: Pubkey, config: SundialInitConfigParams, oracle: Pubkey)]
+#[instruction(
+        bumps: SundialBumps, duration_in_seconds: i64,
+        port_lending_program: Pubkey,
+        config: SundialInitConfigParams, oracle: Pubkey,
+        name:String, pda_bump:u8)]
 pub struct InitializeSundial<'info> {
-    #[account(init, payer=owner)]
+    #[account(init, payer=owner, seeds = [sundial_market.key().as_ref(), name.as_ref()], bump = pda_bump)]
     pub sundial: Account<'info, Sundial>,
     #[account(seeds=[sundial.key().as_ref(), b"authority"], bump=bumps.authority_bump)]
     pub sundial_authority: UncheckedAccount<'info>,
@@ -101,11 +108,11 @@ pub struct PortAccounts<'info> {
     pub port_lending_program: UncheckedAccount<'info>,
 }
 
-#[derive(Accounts)]
+#[validates(check_sundial_not_end)]
+#[derive(Accounts, CheckSundialNotEnd)]
 #[instruction(amount: u64)]
 pub struct DepositAndMintTokens<'info> {
     #[account(
-        constraint = sundial.end_unix_time_stamp > clock.unix_timestamp @ SundialError::AlreadyEnd ,
         constraint = sundial.reserve == port_accounts.reserve.key() @ SundialError::InvalidPortReserve,
         constraint = sundial.token_program == token_program.key() @ SundialError::InvalidTokenProgram,
         constraint = sundial.port_lending_program == port_accounts.port_lending_program.key() @ SundialError::InvalidPortLendingProgram)]
@@ -132,11 +139,11 @@ pub struct DepositAndMintTokens<'info> {
     pub clock: Sysvar<'info, Clock>,
 }
 
-#[derive(Accounts)]
+#[validates(check_sundial_already_end)]
+#[derive(Accounts, CheckSundialAlreadyEnd)]
 #[instruction()]
 pub struct RedeemLp<'info> {
     #[account(
-        constraint = sundial.end_unix_time_stamp <= clock.unix_timestamp @ SundialError::NotEndYet,
         constraint = sundial.reserve == port_accounts.reserve.key() @ SundialError::InvalidPortReserve,
         constraint = sundial.token_program == token_program.key() @ SundialError::InvalidTokenProgram,
         constraint = sundial.port_lending_program == port_accounts.port_lending_program.key() @ SundialError::InvalidPortLendingProgram)]
@@ -153,11 +160,11 @@ pub struct RedeemLp<'info> {
     pub clock: Sysvar<'info, Clock>,
 }
 
-#[derive(Accounts)]
+#[validates(check_sundial_already_end)]
+#[derive(Accounts, CheckSundialAlreadyEnd)]
 #[instruction(amount: u64)]
 pub struct RedeemPrincipleToken<'info> {
     #[account(mut,
-        constraint = sundial.end_unix_time_stamp <= clock.unix_timestamp @ SundialError::NotEndYet,
         constraint = sundial.token_program == token_program.key() @ SundialError::InvalidTokenProgram)]
     pub sundial: Account<'info, Sundial>,
     #[account(seeds=[sundial.key().as_ref(), b"authority"], bump=sundial.bumps.authority_bump)]
@@ -177,11 +184,11 @@ pub struct RedeemPrincipleToken<'info> {
     pub clock: Sysvar<'info, Clock>,
 }
 
-#[derive(Accounts)]
+#[validates(check_sundial_already_end)]
+#[derive(Accounts, CheckSundialAlreadyEnd)]
 #[instruction(amount: u64)]
 pub struct RedeemYieldToken<'info> {
     #[account(
-        constraint = sundial.end_unix_time_stamp <= clock.unix_timestamp @ SundialError::NotEndYet,
         constraint = sundial.token_program == token_program.key() @ SundialError::InvalidTokenProgram)]
     pub sundial: Account<'info, Sundial>,
     #[account(seeds=[sundial.key().as_ref(), b"authority"], bump=sundial.bumps.authority_bump)]

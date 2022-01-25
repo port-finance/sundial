@@ -1,5 +1,5 @@
 import { PublicKey } from '@solana/web3.js';
-import { SundialProgram } from './programs/sundial';
+import { SundialProgram } from './programs';
 import { SundialJSON } from './idls/sundial';
 
 export interface Programs {

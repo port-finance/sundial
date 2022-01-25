@@ -2,6 +2,8 @@ import { ReserveConfig } from '@port.finance/port-sdk/src/structs/ReserveData';
 import { BN } from '@project-serum/anchor';
 import { TOKEN_PROGRAM_ID } from '@solana/spl-token';
 import { PublicKey } from '@solana/web3.js';
+import { SundialCollateralConfigParams } from '../src';
+import { MAX_U64 } from '@saberhq/token-utils';
 
 export const TOKEN_ACCOUNT_LEN = 165;
 export const TOKEN_MINT_LEN = 82;
@@ -27,3 +29,14 @@ export const DEFAULT_RESERVE_CONFIG: ReserveConfig = {
   stakingPoolOption: 0,
   stakingPool: TOKEN_PROGRAM_ID, // dummy
 };
+export const DEFAULT_SUNDIAL_COLLATERAL_CONFIG: SundialCollateralConfigParams =
+  {
+    ltv: 95,
+    liquidationThreshold: 90,
+    liquidationPenalty: 5,
+    liquidityCap: new BN(MAX_U64.toString()),
+  };
+
+export const MOCK_ORACLES = new PublicKey(
+  'FsJ3A3u2vn5cTVofAjvy6y5kwABJAqYWpe4975bi2epH',
+);

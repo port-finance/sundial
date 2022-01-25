@@ -34,5 +34,3 @@ site/
 !.yarn/sdks
 !.yarn/versions
 .pnp.*
-
-deps/*.so

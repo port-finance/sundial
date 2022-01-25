@@ -3,13 +3,13 @@ use anchor_lang::prelude::*;
 use anchor_spl::token::{MintTo, Transfer};
 use pyth_client::PriceType;
 use pyth_client::{cast, Price};
-use solana_maths::{Decimal, Rate, TryDiv, TryMul, U128, U192};
+use solana_maths::{Decimal, TryDiv, TryMul};
 
 use vipers::unwrap_int;
 use vipers::VipersError;
 
-pub const SUNDIAL_COLLATERAL_STALE_TOL: u64 = 0;
-pub const SUNDIAL_PROFILE_STALE_TOL: u64 = 0;
+pub const SUNDIAL_COLLATERAL_STALE_TOL: u64 = 10;
+pub const SUNDIAL_PROFILE_STALE_TOL: u64 = 10;
 macro_rules! seeds {
     ($ctx:ident, $account: ident, $bump_name: ident) => {
         paste! {  &[&[
@@ -160,19 +160,16 @@ pub trait CheckSundialMarketOwner {
 pub trait CheckSundialProfileMarket {
     fn check_sundial_profile_market(&self) -> ProgramResult;
 }
+pub trait CheckSundialNotEnd {
+    fn check_sundial_not_end(&self) -> ProgramResult;
+}
+
+pub trait CheckSundialAlreadyEnd {
+    fn check_sundial_already_end(&self) -> ProgramResult;
+}
 
 macro_rules! get_raw_from_uint {
     ($x: expr) => {
         $x.0 .0
     };
-}
-
-#[inline(always)]
-pub fn raw_to_decimal(x: [u64; 3]) -> Decimal {
-    Decimal(U192(x))
-}
-
-#[inline(always)]
-pub fn raw_to_rate(x: [u64; 2]) -> Rate {
-    Rate(U128(x))
 }

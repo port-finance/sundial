@@ -11,14 +11,46 @@ use syn::Ident;
 use syn::{parse_macro_input, Token};
 use syn::{Data, DeriveInput};
 
+#[proc_macro_derive(CheckSundialNotEnd)]
+pub fn check_sundial_not_end(input: TokenStream) -> TokenStream {
+    let ast = parse_macro_input!(input as DeriveInput);
+
+    let name = &ast.ident;
+    (quote! {
+        impl<'a> crate::helpers::CheckSundialNotEnd for #name<'a> {
+             fn check_sundial_not_end(&self) -> ProgramResult {
+                vipers::invariant!(self.sundial.end_unix_time_stamp > self.clock.unix_timestamp, crate::error::SundialError::AlreadyEnd);
+                Ok(())
+            }
+        }
+    })
+        .into()
+}
+
+#[proc_macro_derive(CheckSundialAlreadyEnd)]
+pub fn check_sundial_already_end(input: TokenStream) -> TokenStream {
+    let ast = parse_macro_input!(input as DeriveInput);
+
+    let name = &ast.ident;
+    (quote! {
+        impl<'a> crate::helpers::CheckSundialAlreadyEnd for #name<'a> {
+             fn check_sundial_already_end(&self) -> ProgramResult {
+                vipers::invariant!(self.sundial.end_unix_time_stamp <= self.clock.unix_timestamp, crate::error::SundialError::NotEndYet);
+                Ok(())
+            }
+        }
+    })
+        .into()
+}
+
 #[proc_macro_derive(CheckSundialProfileStale)]
 pub fn check_sundial_profile_stale(input: TokenStream) -> TokenStream {
     let ast = parse_macro_input!(input as DeriveInput);
     let name = &ast.ident;
     (quote! {
-        impl<'a> CheckSundialProfileStale for #name<'a> {
+        impl<'a> crate::helpers::CheckSundialProfileStale for #name<'a> {
              fn check_sundial_profile_stale(&self) -> ProgramResult {
-                self.sundial_profile.last_update.check_stale(&self.clock, crate::helpers::SUNDIAL_PROFILE_STALE_TOL,"Sundial Profile Is Stale")
+                self.sundial_profile.last_update.check_stale(&self.clock, crate::helpers::SUNDIAL_PROFILE_STALE_TOL, "Sundial Profile Is Stale")
              }
         }
     })
@@ -30,7 +62,7 @@ pub fn check_sundial_market_owner(input: TokenStream) -> TokenStream {
     let ast = parse_macro_input!(input as DeriveInput);
     let name = &ast.ident;
     (quote! {
-        impl<'a> CheckSundialMarketOwner for #name<'a> {
+        impl<'a> crate::helpers::CheckSundialMarketOwner for #name<'a> {
              fn check_sundial_market_owner(&self) -> ProgramResult {
                 vipers::assert_keys_eq!(self.sundial_market.owner, *self.owner.key, SundialError::InvalidOwner, "Invalid Sundial Market Owner");
                 Ok(())
@@ -68,7 +100,7 @@ pub fn check_sundial_profile_market(input: TokenStream) -> TokenStream {
     };
 
     (quote! {
-        impl<'a> CheckSundialProfileMarket for #name<'a> {
+        impl<'a> crate::helpers::CheckSundialProfileMarket for #name<'a> {
              fn check_sundial_profile_market(&self) -> ProgramResult {
                 #sundial_check;
                 #sundial_collateral_check;
@@ -132,7 +164,7 @@ pub fn check_sundial_owner(input: TokenStream) -> TokenStream {
     };
 
     (quote! {
-        impl<'a> CheckSundialOwner for #name<'a> {
+        impl<'a> crate::helpers::CheckSundialOwner for #name<'a> {
              fn check_sundial_owner(&self) -> ProgramResult {
                 #sundial_check;
                 #sundial_collateral_check;

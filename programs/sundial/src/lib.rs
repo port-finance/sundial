@@ -3,7 +3,7 @@ use crate::lending_instructions::*;
 use crate::state::SundialBumps;
 use crate::state::SundialCollateralBumps;
 use anchor_lang::prelude::*;
-
+use itertools::Itertools;
 pub mod error;
 pub mod event;
 #[macro_use]
@@ -23,7 +23,6 @@ pub mod sundial {
     use crate::helpers::{create_mint_to_cpi, create_transfer_cpi, update_or_insert};
     use anchor_spl::token::{burn, mint_to, transfer, Burn};
 
-    use port_anchor_adaptor::port_accessor::reserve_oracle_pubkey;
     use port_anchor_adaptor::{deposit_reserve, redeem};
 
     use crate::error::SundialError;
@@ -32,7 +31,7 @@ pub mod sundial {
     use solana_maths::{Decimal, Rate, TryDiv, TryMul, U128};
     use vipers::Validate;
     use vipers::{unwrap_int, unwrap_opt};
-
+    #[allow(clippy::too_many_arguments)]
     #[access_control(ctx.accounts.validate())]
     pub fn initialize_sundial(
         ctx: Context<InitializeSundial>,
@@ -41,6 +40,8 @@ pub mod sundial {
         port_lending_program: Pubkey,
         config: SundialInitConfigParams,
         oracle: Pubkey,
+        _name: String,
+        _pda_bump: u8,
     ) -> ProgramResult {
         let sundial = &mut ctx.accounts.sundial;
         sundial.bumps = bumps;
@@ -58,9 +59,11 @@ pub mod sundial {
         sundial.config = config.into();
         sundial.sundial_market = ctx.accounts.sundial_market.key();
         sundial.oracle = oracle;
+
         Ok(())
     }
 
+    #[access_control(ctx.accounts.validate())]
     pub fn mint_principle_tokens_and_yield_tokens(
         ctx: Context<DepositAndMintTokens>,
         amount: u64,
@@ -134,6 +137,7 @@ pub mod sundial {
         Ok(())
     }
 
+    #[access_control(ctx.accounts.validate())]
     pub fn redeem_principle_tokens(
         ctx: Context<RedeemPrincipleToken>,
         amount: u64,
@@ -168,6 +172,7 @@ pub mod sundial {
         Ok(())
     }
 
+    #[access_control(ctx.accounts.validate())]
     pub fn redeem_yield_tokens(ctx: Context<RedeemYieldToken>, amount: u64) -> ProgramResult {
         let principle_supply_amount = ctx.accounts.principle_token_mint.supply;
         let liquidity_of_yield = unwrap_int!(ctx
@@ -213,6 +218,7 @@ pub mod sundial {
         Ok(())
     }
 
+    #[access_control(ctx.accounts.validate())]
     pub fn redeem_lp(ctx: Context<RedeemLp>) -> ProgramResult {
         log_then_prop_err!(redeem(
             ctx.accounts.port_accounts.create_redeem_context(
@@ -229,17 +235,20 @@ pub mod sundial {
     }
 
     #[access_control(ctx.accounts.validate())]
-    pub fn initialize_collateral(
+    pub fn initialize_sundial_collateral(
         ctx: Context<InitializeSundialCollateral>,
         bumps: SundialCollateralBumps,
         config: SundialCollateralConfigParams,
+        _name: String,
+        _pda_bump: u8,
     ) -> ProgramResult {
         let sundial_collateral = &mut ctx.accounts.sundial_collateral;
         sundial_collateral.bumps = bumps;
         sundial_collateral.port_collateral_reserve = ctx.accounts.port_collateral_reserve.key();
-        sundial_collateral.config = config.into();
+        sundial_collateral.sundial_collateral_config = config.into();
         sundial_collateral.sundial_market = ctx.accounts.sundial_market.key();
         sundial_collateral.token_program = ctx.accounts.token_program.key();
+        sundial_collateral.collateral_mint = ctx.accounts.port_lp_mint.key();
         Ok(())
     }
 
@@ -290,7 +299,11 @@ pub mod sundial {
 
         let sundial_profile = &mut ctx.accounts.sundial_profile;
 
-        let liquidity_cap = ctx.accounts.sundial_collateral.config.liquidity_cap;
+        let liquidity_cap = ctx
+            .accounts
+            .sundial_collateral
+            .sundial_collateral_config
+            .liquidity_cap;
         log_then_prop_err!(
             liquidity_cap.check_balance(&mut ctx.accounts.sundial_collateral_port_lp_wallet)
         );
@@ -315,21 +328,23 @@ pub mod sundial {
         let sundial_profile = &mut ctx.accounts.sundial_profile;
         let reserve_pubkey = ctx.accounts.sundial_collateral.port_collateral_reserve; //todo change this
 
-        let collateral = vipers::unwrap_opt!(
+        let (pos, collateral) = vipers::unwrap_opt!(
             sundial_profile
                 .collaterals
                 .iter_mut()
-                .find(|c| c.sundial_collateral == reserve_pubkey),
+                .find_position(|c| c.sundial_collateral == reserve_pubkey),
             SundialError::WithdrawTooMuchCollateral,
             "You don't have that asset as collateral"
         );
 
         let withdraw_amount = min(collateral.asset.amount, max_withdraw_amount);
-        log_then_prop_err!(
+        if 0 == log_then_prop_err!(
             collateral.asset.reduce_amount(withdraw_amount),
             SundialError::WithdrawTooMuchCollateral,
             "You are trying to withdraw more than you have"
-        );
+        ) {
+            sundial_profile.collaterals.remove(pos);
+        }
 
         sundial_profile.check_enough_borrowing_power(
             SundialError::WithdrawTooMuchCollateral,
@@ -352,7 +367,7 @@ pub mod sundial {
     }
 
     #[access_control(ctx.accounts.validate())]
-    pub fn mint_sundial_liquidity<'info>(
+    pub fn mint_sundial_liquidity_with_collateral<'info>(
         ctx: Context<'_, '_, '_, 'info, MintSundialLiquidityWithCollateral<'info>>,
         amount: u64,
     ) -> ProgramResult {
@@ -384,26 +399,21 @@ pub mod sundial {
         log_then_prop_err!(update_or_insert(
             &mut profile.loans,
             |l| l.sundial == loan_sundial,
-            |l| l.asset.add_amount(amount),
+            |l| {
+                l.asset.add_amount(amount)?;
+                l.update_config(&ctx.accounts.sundial)?;
+                Ok(())
+            },
             || {
-                let reserve_info = unwrap_opt!(
-                    ctx.remaining_accounts.get(0),
-                    SundialError::ReserveNeeded,
-                    "Reserve should be passed in when you first mint this asset"
-                );
                 let oracle_info = unwrap_opt!(
-                    ctx.remaining_accounts.get(1),
+                    ctx.remaining_accounts.get(0),
                     SundialError::OracleNeeded,
                     "Oracle should be passed in when you first mint this asset"
                 );
-                vipers::assert_keys_eq!(
-                    reserve_info.key,
-                    ctx.accounts.sundial.reserve,
-                    "Invalid Reserve"
-                );
+
                 vipers::assert_keys_eq!(
                     oracle_info.key,
-                    reserve_oracle_pubkey(reserve_info)?,
+                    ctx.accounts.sundial.oracle,
                     "Invalid Oracle"
                 );
 
@@ -431,18 +441,23 @@ pub mod sundial {
     ) -> ProgramResult {
         let sundial_key = ctx.accounts.sundial.key();
         let profile = &mut ctx.accounts.sundial_profile;
-        let loan = vipers::unwrap_opt!(
-            profile.loans.iter_mut().find(|l| l.sundial == sundial_key),
+        let (pos, loan) = vipers::unwrap_opt!(
+            profile
+                .loans
+                .iter_mut()
+                .find_position(|l| l.sundial == sundial_key),
             SundialError::RepayTooMuchLoan,
             "You don't have that asset as loan"
         );
 
         let repay_amount = min(loan.asset.amount, max_repay_amount);
-        log_then_prop_err!(
+        if 0 == log_then_prop_err!(
             loan.asset.reduce_amount(repay_amount),
             SundialError::RepayTooMuchLoan,
             "Repay too much, you don't have that much of loan"
-        );
+        ) {
+            profile.loans.remove(pos);
+        };
 
         log_then_prop_err!(transfer(
             create_transfer_cpi(
@@ -487,17 +502,17 @@ pub mod sundial {
             .and_then(|d| d.try_div(2)));
 
         let (collaterals, loans) = sundial_profile.get_mut_collaterals_and_loans();
-        let loan_to_repay = vipers::unwrap_opt!(
-            loans.iter_mut().find(|l| l.sundial == sundial_key),
+        let (loan_pos, loan_to_repay) = vipers::unwrap_opt!(
+            loans.iter_mut().find_position(|l| l.sundial == sundial_key),
             SundialError::InvalidLiquidation,
             "This profile doesn't have this loan asset"
         );
 
         let sundial_collateral_key = ctx.accounts.sundial_collateral.key();
-        let collateral_to_withdraw = vipers::unwrap_opt!(
+        let (collateral_pos, collateral_to_withdraw) = vipers::unwrap_opt!(
             collaterals
                 .iter_mut()
-                .find(|c| c.sundial_collateral == sundial_collateral_key),
+                .find_position(|c| c.sundial_collateral == sundial_collateral_key),
             SundialError::InvalidLiquidation,
             "Withdraw collateral doesn't exist"
         );
@@ -533,8 +548,12 @@ pub mod sundial {
             .get_amount(withdraw_value)
             .and_then(|d| d.try_ceil_u64()));
 
-        log_then_prop_err!(loan_to_repay.asset.reduce_amount(repay_amount));
-        log_then_prop_err!(collateral_to_withdraw.asset.reduce_amount(withdraw_amount));
+        if log_then_prop_err!(loan_to_repay.asset.reduce_amount(repay_amount)) == 0 {
+            loans.remove(loan_pos);
+        };
+        if log_then_prop_err!(collateral_to_withdraw.asset.reduce_amount(withdraw_amount)) == 0 {
+            collaterals.remove(collateral_pos);
+        };
 
         log_then_prop_err!(transfer(
             create_transfer_cpi(
@@ -563,8 +582,8 @@ pub mod sundial {
         Ok(())
     }
 
-    pub fn create_sundial_profile(
-        ctx: Context<CreateSundialProfile>,
+    pub fn initialize_sundial_profile(
+        ctx: Context<InitializeSundialProfile>,
         sundial_market: Pubkey,
         _bump: u8,
     ) -> ProgramResult {
@@ -579,7 +598,7 @@ pub mod sundial {
         let reserve = &ctx.accounts.port_collateral_reserve;
         let liquidity_price = reserve.liquidity.market_price;
         let exchange_rate = log_then_prop_err!(reserve.collateral_exchange_rate());
-        sundial_collateral.port_lp_price = get_raw_from_uint!(log_then_prop_err!(
+        sundial_collateral.collateral_price = get_raw_from_uint!(log_then_prop_err!(
             exchange_rate.decimal_liquidity_to_collateral(liquidity_price)
         ));
         sundial_collateral.last_updated_slot = ctx.accounts.clock.slot.into();
@@ -591,7 +610,7 @@ pub mod sundial {
         ctx: Context<ChangeCollateralConfig>,
         config: SundialCollateralConfigParams,
     ) -> ProgramResult {
-        ctx.accounts.sundial_collateral.config = config.into();
+        ctx.accounts.sundial_collateral.sundial_collateral_config = config.into();
         Ok(())
     }
 

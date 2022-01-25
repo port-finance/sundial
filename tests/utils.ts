@@ -82,6 +82,7 @@ export async function createDefaultReserve(
   sourceTokenWallet: PublicKey,
   lendingMarket: PublicKey,
   config: ReserveConfig,
+  oracle?: PublicKey,
 ): Promise<ReserveState> {
   const reserve = await createAccount(provider, RESERVE_LEN, PORT_LENDING);
 
@@ -136,7 +137,7 @@ export async function createDefaultReserve(
       tokenAccount.mint,
       liquiditySupplyTokenAccount.publicKey,
       liquidityFeeReceiver.publicKey,
-      Keypair.generate().publicKey,
+      oracle ?? Keypair.generate().publicKey,
       collateralMintAccount.publicKey,
       collateralSupplyTokenAccount.publicKey,
       lendingMarket,

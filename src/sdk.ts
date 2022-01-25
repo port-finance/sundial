@@ -4,16 +4,34 @@ import {
   DEFAULT_PROVIDER_OPTIONS,
   SignerWallet,
   SolanaProvider,
+  TransactionEnvelope,
 } from '@saberhq/solana-contrib';
-import { ConfirmOptions, Signer } from '@solana/web3.js';
+import {
+  ConfirmOptions,
+  Keypair,
+  PublicKey,
+  Signer,
+  SystemProgram,
+} from '@solana/web3.js';
 import mapValues from 'lodash.mapvalues';
 import {
   Address,
   Program,
   Provider as AnchorProvider,
   Idl,
+  utils,
 } from '@project-serum/anchor';
-import { SundialWrapper } from './wrappers/sundial';
+
+import { expectTX } from '@saberhq/chai-solana';
+import { SundialProfileWrapper, SundialWrapper } from './wrappers';
+import { SundialCollateralWrapper } from './wrappers/sundial/sundialCollateralWrapper';
+
+const AUTHORITY = 'authority';
+const FEE_RECEIVER_KEY = 'fee_receiver';
+const PRINCIPLE_MINT_KEY = 'principle_mint';
+const YIELD_MINT_KEY = 'yield_mint';
+const LIQUIDITY_KEY = 'liquidity';
+const LP_KEY = 'lp';
 
 export class SundialSDK {
   constructor(
@@ -40,6 +58,18 @@ export class SundialSDK {
 
   get programList(): Program[] {
     return Object.values(this.programs) as Program[];
+  }
+
+  get sundialWrapper() {
+    return new SundialWrapper(this);
+  }
+
+  get sundialCollateralWrapper() {
+    return new SundialCollateralWrapper(this);
+  }
+
+  get sundialProfileWrapper() {
+    return new SundialProfileWrapper(this);
   }
 
   /**
@@ -79,7 +109,89 @@ export class SundialSDK {
     return new SundialSDK(provider, programs);
   }
 
-  get sundial(): SundialWrapper {
-    return new SundialWrapper(this);
+  public async getAuthorityAndBump(
+    key: PublicKey,
+  ): Promise<[PublicKey, number]> {
+    return await PublicKey.findProgramAddress(
+      [key.toBuffer(), utils.bytes.utf8.encode(AUTHORITY)],
+      this.programs.Sundial.programId,
+    );
+  }
+
+  public async getPrincipleMintAndBump(
+    key: PublicKey,
+  ): Promise<[PublicKey, number]> {
+    return await PublicKey.findProgramAddress(
+      [key.toBuffer(), utils.bytes.utf8.encode(PRINCIPLE_MINT_KEY)],
+      this.programs.Sundial.programId,
+    );
+  }
+
+  public async getYieldMintAndBump(
+    key: PublicKey,
+  ): Promise<[PublicKey, number]> {
+    return await PublicKey.findProgramAddress(
+      [key.toBuffer(), utils.bytes.utf8.encode(YIELD_MINT_KEY)],
+      this.programs.Sundial.programId,
+    );
+  }
+
+  public async getLiquidityTokenSupplyAndBump(
+    key: PublicKey,
+  ): Promise<[PublicKey, number]> {
+    return await PublicKey.findProgramAddress(
+      [key.toBuffer(), utils.bytes.utf8.encode(LIQUIDITY_KEY)],
+      this.programs.Sundial.programId,
+    );
+  }
+
+  public async getLPTokenSupplyAndNounce(
+    key: PublicKey,
+  ): Promise<[PublicKey, number]> {
+    return await PublicKey.findProgramAddress(
+      [key.toBuffer(), utils.bytes.utf8.encode(LP_KEY)],
+      this.programs.Sundial.programId,
+    );
+  }
+
+  public async getFeeReceiverAndBump(
+    key: PublicKey,
+  ): Promise<[PublicKey, number]> {
+    return await PublicKey.findProgramAddress(
+      [key.toBuffer(), utils.bytes.utf8.encode(FEE_RECEIVER_KEY)],
+      this.programs.Sundial.programId,
+    );
+  }
+
+  public async getCreateSundialMarketTx({
+    sundialMarketBase,
+    owner,
+    payer,
+  }: {
+    sundialMarketBase: Keypair;
+    owner: PublicKey;
+    payer: PublicKey;
+  }): Promise<TransactionEnvelope> {
+    const tx = new TransactionEnvelope(this.provider, [
+      this.programs.Sundial.instruction.initializeSundialMarket(owner, {
+        accounts: {
+          sundialMarket: sundialMarketBase.publicKey,
+          payer,
+          systemProgram: SystemProgram.programId,
+        },
+      }),
+    ]);
+    return tx.addSigners(sundialMarketBase);
+  }
+
+  public async createSundialMarket(owner?: PublicKey): Promise<Keypair> {
+    const sundialMarket = Keypair.generate();
+    const tx = await this.getCreateSundialMarketTx({
+      sundialMarketBase: sundialMarket,
+      owner: owner ? owner : this.provider.wallet.publicKey,
+      payer: this.provider.wallet.publicKey,
+    });
+    await expectTX(tx, 'init sundial market').to.be.fulfilled;
+    return sundialMarket;
   }
 }
