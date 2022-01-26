@@ -89,20 +89,25 @@
     "@pythnetwork/client" "^2.5.1"
     "@saberhq/anchor-contrib" "^1.12.20"
 
-"@port.finance/port-sdk@^0.1.66":
-  version "0.1.69"
-  resolved "https://registry.yarnpkg.com/@port.finance/port-sdk/-/port-sdk-0.1.69.tgz#f06a99fba888301f0340abb1d35e072cf74b0b91"
-  integrity sha512-AyjxXxW9iv9Zuyb9cMvL+LTZJyGIY1lJ0Y74xh3V+VcdzeoP2WS+wrQvVtf3FBGaac8/7cVnnTggOLveDGxZzw==
+"@port.finance/port-sdk@^0.2.54":
+  version "0.2.54"
+  resolved "https://registry.yarnpkg.com/@port.finance/port-sdk/-/port-sdk-0.2.54.tgz#f270563754a4e305230cf83a357f221f118df4de"
+  integrity sha512-LdDX9mBo427w6dhWbu8C2lfbuV9W16dN+RCqwtkphEyBoh4wCk9ki2QzOPcO2kcZItSsuluuSVh3q7BSSbgKVQ==
   dependencies:
+    "@project-serum/anchor" "^0.20.1"
+    "@project-serum/common" "^0.0.1-beta.3"
+    "@saberhq/solana-contrib" "^1.12.35"
+    "@saberhq/token-utils" "^1.12.35"
+    "@solana/buffer-layout" "^3.0.0"
     "@solana/spl-token" "^0.1.8"
-    "@solana/spl-token-registry" "^0.2.205"
+    "@solana/spl-token-registry" "^0.2.1107"
     big.js "^6.1.1"
     bignumber.js "^9.0.1"
     buffer-layout "1.2.2"
+    jsbi "^4.1.0"
     prettier "^2.4.1"
     tiny-invariant "^1.2.0"
     typescript "^4.3.5"
-    user "^0.0.0"
 
 "@project-serum/anchor@^0.11.1":
   version "0.11.1"
@@ -144,7 +149,7 @@
     snake-case "^3.0.4"
     toml "^3.0.0"
 
-"@project-serum/anchor@^0.20.0":
+"@project-serum/anchor@^0.20.0", "@project-serum/anchor@^0.20.1":
   version "0.20.1"
   resolved "https://registry.yarnpkg.com/@project-serum/anchor/-/anchor-0.20.1.tgz#0937807e807e8332aa708cfef4bcb6cbb88b4129"
   integrity sha512-2TuBmGUn9qeYz6sJINJlElrBuPsaUAtYyUsJ3XplEBf1pczrANAgs5ceJUFzdiqGEWLn+84ObSdBeChT/AXYFA==
@@ -272,6 +277,18 @@
     tiny-invariant "^1.2.0"
     tslib "^2.3.1"
 
+"@saberhq/token-utils@^1.12.35":
+  version "1.12.35"
+  resolved "https://registry.yarnpkg.com/@saberhq/token-utils/-/token-utils-1.12.35.tgz#900b44e26eb14765367cbf252fe870bbd52551c8"
+  integrity sha512-ppvgYO0/5wi5W8Lt13xWv21NvGnIFHNQfZ2YYry2x+spR66a04P3zGgsHBYD+N0TDjD9q08bBdEa9U1E010sAA==
+  dependencies:
+    "@saberhq/solana-contrib" "^1.12.35"
+    "@solana/buffer-layout" "^4.0.0"
+    "@solana/spl-token" "^0.1.8"
+    "@ubeswap/token-math" "^4.4.1"
+    tiny-invariant "^1.2.0"
+    tslib "^2.3.1"
+
 "@solana/buffer-layout@^3.0.0":
   version "3.0.0"
   resolved "https://registry.yarnpkg.com/@solana/buffer-layout/-/buffer-layout-3.0.0.tgz#b9353caeb9a1589cb77a1b145bcb1a9a93114326"
@@ -286,10 +303,10 @@
   dependencies:
     buffer "~6.0.3"
 
-"@solana/spl-token-registry@^0.2.205":
-  version "0.2.819"
-  resolved "https://registry.yarnpkg.com/@solana/spl-token-registry/-/spl-token-registry-0.2.819.tgz#1bf967e60a98eb55161d95fed2b91aef4cf61745"
-  integrity sha512-gPXH4L692NoWzfJSe45S6rVD6ImMcirc9KrD+XuE1pYRM9bl6pD7czfmlEw+SwvPb76Sm26M0ikemVhmI6+ORg==
+"@solana/spl-token-registry@^0.2.1107":
+  version "0.2.1779"
+  resolved "https://registry.yarnpkg.com/@solana/spl-token-registry/-/spl-token-registry-0.2.1779.tgz#bfe24845994644655fdaca059ac5c771065f88a3"
+  integrity sha512-pLilKTf9yockWvxkYg5CujIBsIymUudiJxRTSVXI4IQqbgd/L3itZryufj/9+6PCAPv+F4LUXC6zDuR78QwLAg==
   dependencies:
     cross-fetch "3.0.6"
 
@@ -2840,11 +2857,6 @@ uri-js@^4.2.2:
   integrity sha512-7rKUyy33Q1yc98pQ1DAmLtwX109F7TIfWlW1Ydo8Wl1ii1SeHieeh0HHfPeL2fMXK6z0s8ecKs9frCuLJvndBg==
   dependencies:
     punycode "^2.1.0"
-
-user@^0.0.0:
-  version "0.0.0"
-  resolved "https://registry.yarnpkg.com/user/-/user-0.0.0.tgz#f27f1b23fc511f2a8efa40db55cfba123824e02a"
-  integrity sha1-8n8bI/xRHyqO+kDbVc+6Ejgk4Co=
 
 utf-8-validate@^5.0.2:
   version "5.0.7"

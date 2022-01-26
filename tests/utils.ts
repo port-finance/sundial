@@ -1,8 +1,8 @@
 import {
   initLendingMarketInstruction,
   initReserveInstruction,
+  ReserveConfigProto,
 } from '@port.finance/port-sdk';
-import { ReserveConfig } from '@port.finance/port-sdk/src/structs/ReserveData';
 import { BN, Provider } from '@project-serum/anchor';
 import { getTokenAccount } from '@project-serum/common';
 import { TOKEN_PROGRAM_ID } from '@solana/spl-token';
@@ -81,7 +81,7 @@ export async function createDefaultReserve(
   initialLiquidity: number | BN,
   sourceTokenWallet: PublicKey,
   lendingMarket: PublicKey,
-  config: ReserveConfig,
+  config: ReserveConfigProto,
   oracle?: PublicKey,
 ): Promise<ReserveState> {
   const reserve = await createAccount(provider, RESERVE_LEN, PORT_LENDING);

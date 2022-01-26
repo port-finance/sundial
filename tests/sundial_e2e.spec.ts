@@ -32,9 +32,9 @@ import {
   initObligationInstruction,
   refreshObligationInstruction,
   refreshReserveInstruction,
+  PORT_PROFILE_DATA_SIZE,
 } from '@port.finance/port-sdk';
 import { expectTX } from '@saberhq/chai-solana';
-import { OBLIGATION_DATA_SIZE } from '@port.finance/port-sdk/dist/cjs/structs/PortBalanceData';
 
 const SECONDS_IN_YEAR = 365 * 24 * 60 * 60;
 const FEE_IN_BIPS = 10;
@@ -98,7 +98,7 @@ describe('Sundial Interacting with Port Reserve that has positive APY', () => {
     const obligationKp = await createAccountRentExempt(
       provider,
       PORT_LENDING,
-      OBLIGATION_DATA_SIZE,
+      PORT_PROFILE_DATA_SIZE,
     );
     tx.add(
       initObligationInstruction(

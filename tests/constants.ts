@@ -1,4 +1,4 @@
-import { ReserveConfig } from '@port.finance/port-sdk/src/structs/ReserveData';
+import { ReserveConfigProto } from '@port.finance/port-sdk';
 import { BN } from '@project-serum/anchor';
 import { TOKEN_PROGRAM_ID } from '@solana/spl-token';
 import { PublicKey } from '@solana/web3.js';
@@ -13,7 +13,7 @@ export const STAKING_POOL_LEN = 298;
 export const PORT_LENDING = new PublicKey(
   'Port7uDYB3wk6GJAw4KT1WpTeMtSu9bTcChBHkX2LfR',
 );
-export const DEFAULT_RESERVE_CONFIG: ReserveConfig = {
+export const DEFAULT_RESERVE_CONFIG: ReserveConfigProto = {
   optimalUtilizationRate: 80,
   loanToValueRatio: 80,
   liquidationBonus: 5,
