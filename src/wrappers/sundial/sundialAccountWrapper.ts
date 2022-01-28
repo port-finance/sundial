@@ -6,7 +6,7 @@ import invariant from 'tiny-invariant';
 export class SundialAccountWrapper {
   public readonly program: SundialProgram;
   private key?: PublicKey;
-  public data: SundialAccountData;
+  private data: SundialAccountData;
 
   constructor(
     public readonly sdk: SundialSDK,
@@ -42,22 +42,22 @@ export class SundialAccountWrapper {
 
   get sundialData() {
     this.checkStateValid();
-    invariant(this.data.type == 'sundial', 'Not SundialData');
+    invariant(this.data.type === 'sundial', 'Not SundialData');
     return this.data.data;
   }
 
   get sundialCollateralData() {
     this.checkStateValid();
     invariant(
-      this.data.type == 'sundialCollateral',
+      this.data.type === 'sundialCollateral',
       'Not SundialCollateralData',
     );
     return this.data.data;
   }
 
-  get sundialProfile() {
+  get sundialProfileData() {
     this.checkStateValid();
-    invariant(this.data.type == 'sundialProfile', 'Not SundialProfileData');
+    invariant(this.data.type === 'sundialProfile', 'Not SundialProfileData');
     return this.data.data;
   }
 

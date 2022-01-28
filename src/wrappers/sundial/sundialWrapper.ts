@@ -35,6 +35,20 @@ export class SundialWrapper extends SundialAccountWrapper {
     return this.publicKey;
   }
 
+  public getBorrowFee(borrowAmount: BN) {
+    this.checkStateValid();
+    const feeBips = this.sundialData.config.borrowFee.bips;
+    return borrowAmount.muln(feeBips).addn(9999).divn(10000);
+  }
+
+  public async getUserPrincipleWallet(userPubkey?: PublicKey) {
+    const owner = userPubkey ?? this.sdk.provider.wallet.publicKey;
+    return getATAAddress({
+      mint: (await this.getPrincipleMintAndBump())[0],
+      owner,
+    });
+  }
+
   static async getSundialKey(
     name: string,
     sundialMarket: PublicKey,

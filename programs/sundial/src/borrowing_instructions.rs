@@ -94,7 +94,6 @@ pub struct DepositSundialCollateral<'info> {
     pub token_program: Program<'info, Token>,
     pub user: Signer<'info>,
     pub transfer_authority: Signer<'info>,
-    pub clock: Sysvar<'info, Clock>,
 }
 
 #[validates(
@@ -115,7 +114,7 @@ pub struct MintSundialLiquidityWithCollateral<'info> {
     pub sundial_authority: UncheckedAccount<'info>,
     #[account(mut, seeds = [sundial.key().as_ref(), b"principle_mint"], bump = sundial.bumps.principle_mint_bump)]
     pub sundial_principle_mint: Account<'info, Mint>,
-    #[account(seeds = [sundial.key().as_ref(), b"fee_receiver"], bump = sundial.bumps.fee_receiver_bump)]
+    #[account(mut, seeds = [sundial.key().as_ref(), b"fee_receiver"], bump = sundial.bumps.fee_receiver_bump)]
     pub fee_receiver_wallet: Box<Account<'info, TokenAccount>>,
     #[account(mut)]
     pub user_principle_wallet: Account<'info, TokenAccount>,
@@ -178,7 +177,7 @@ pub struct LiquidateSundialProfile<'info> {
     pub sundial_collateral: Box<Account<'info, SundialCollateral>>,
     #[account(seeds=[sundial_collateral.key().as_ref(), b"authority"], bump=sundial_collateral.bumps.authority_bump)]
     pub sundial_collateral_authority: UncheckedAccount<'info>,
-    #[account(seeds = [sundial_collateral.key().as_ref(), b"lp"], bump = sundial_collateral.bumps.port_lp_bump)]
+    #[account(mut, seeds = [sundial_collateral.key().as_ref(), b"lp"], bump = sundial_collateral.bumps.port_lp_bump)]
     pub sundial_collateral_wallet: Box<Account<'info, TokenAccount>>, //Port Lp token Account
     pub transfer_authority: Signer<'info>,
     pub token_program: Program<'info, Token>,
@@ -186,7 +185,7 @@ pub struct LiquidateSundialProfile<'info> {
 }
 
 #[derive(Accounts, Clone)]
-#[instruction(bump: u8, sundial_market: Pubkey)]
+#[instruction(sundial_market: Pubkey, bump: u8)]
 pub struct InitializeSundialProfile<'info> {
     #[account(init, payer=user, seeds=[sundial_market.as_ref(), user.key().as_ref(), b"profile"], bump=bump)]
     pub sundial_profile: Box<Account<'info, SundialProfile>>,

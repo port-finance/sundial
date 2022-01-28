@@ -16,7 +16,6 @@ import {
   TOKEN_ACCOUNT_LEN,
   TOKEN_MINT_LEN,
 } from './constants';
-import { RESERVE_INIT_LIQUIDITY } from './workspace';
 
 export const createAccount = async (
   provider: Provider,
@@ -128,7 +127,7 @@ export async function createDefaultReserve(
   tx.add(
     initReserveInstruction(
       initialLiquidity,
-      RESERVE_INIT_LIQUIDITY.toNumber(),
+      oracle ? 0 : 1,
       new BN('100000000000000000000000'),
       config,
       sourceTokenWallet,

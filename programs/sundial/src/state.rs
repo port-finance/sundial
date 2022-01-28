@@ -71,11 +71,15 @@ impl LiquidityCap {
         token_account: &mut Account<'info, TokenAccount>,
     ) -> ProgramResult {
         token_account.reload()?;
-        if token_account.amount > self.lamports {
-            Err(SundialError::ExceedLiquidityCap.into())
-        } else {
-            Ok(())
-        }
+        invariant!(
+            token_account.amount <= self.lamports,
+            SundialError::ExceedLiquidityCap,
+            &format!(
+                "Exceed LiquidityCap, Cap {:?}, TokenAmount {:?}",
+                self.lamports, token_account.amount
+            )
+        );
+        Ok(())
     }
 }
 
@@ -149,8 +153,15 @@ impl From<u64> for LastUpdatedSlot {
 }
 impl LastUpdatedSlot {
     pub fn check_stale(&self, clock: &Clock, tol: u64, msg: &str) -> ProgramResult {
-        invariant!(self.slot >= clock.slot);
-        invariant!(clock.slot - self.slot <= tol, SundialError::StateStale, msg);
+        let slot_diff = unwrap_int!(clock.slot.checked_sub(self.slot));
+        invariant!(
+            slot_diff <= tol,
+            SundialError::StateStale,
+            &format!(
+                "clock {:?}, self {:?}, diff {:?}, tol {:?}, {:?}",
+                clock.slot, self.slot, slot_diff, tol, msg
+            )
+        );
         Ok(())
     }
 }
@@ -166,6 +177,26 @@ pub struct SundialCollateralConfig {
     pub ltv: LTV,
     pub liquidation_config: LiquidationConfig,
     pub liquidity_cap: LiquidityCap,
+}
+
+impl SundialCollateralConfig {
+    pub fn sanity_check(&self) -> ProgramResult {
+        invariant!(
+            self.ltv.ltv < 100,
+            SundialError::InvalidSundialCollateralConfig,
+            &format!("Invalid LTV {:?}", self.ltv.ltv)
+        );
+        invariant!(
+            self.liquidation_config.liquidation_threshold > self.ltv.ltv
+                && self.liquidation_config.liquidation_threshold < 100,
+            SundialError::InvalidSundialCollateralConfig,
+            &format!(
+                "Invalid Liquidation Threshold {:?}, ltv {:?}",
+                self.liquidation_config.liquidation_threshold, self.ltv.ltv
+            )
+        );
+        Ok(())
+    }
 }
 
 #[derive(AnchorDeserialize, AnchorSerialize, Debug, PartialEq, Clone, Default)]
@@ -246,7 +277,14 @@ impl SundialProfile {
     pub fn check_enough_borrowing_power(&self, err: SundialError, msg: &str) -> ProgramResult {
         let borrowing_power = log_then_prop_err!(self.get_borrowing_power());
         let borrowed_value = log_then_prop_err!(self.get_borrowed_value());
-        vipers::invariant!(borrowing_power >= borrowed_value, err, msg);
+        vipers::invariant!(
+            borrowing_power >= borrowed_value,
+            err,
+            &format!(
+                "Not enough borrowing power, current borrowing power {}, borrowed amount {}, {:?}",
+                borrowing_power, borrowed_value, msg
+            )
+        );
         Ok(())
     }
 
@@ -281,20 +319,30 @@ impl Default for SundialProfile {
 }
 
 #[derive(AnchorDeserialize, AnchorSerialize, Debug, PartialEq, Clone, Default)]
-pub struct SundialProfileCollateral {
-    pub asset: AssetInfo,
-    pub sundial_collateral: Pubkey,
-    pub config: SundialProfileCollateralConfig,
-}
-#[derive(AnchorDeserialize, AnchorSerialize, Debug, PartialEq, Clone, Default)]
 pub struct AssetInfo {
     pub amount: u64,
     pub total_value: [u64; 3], //Decimal
 }
 
+#[derive(AnchorDeserialize, AnchorSerialize, Debug, PartialEq, Clone, Default)]
+pub struct SundialProfileCollateralConfig {
+    pub ltv: LTV,
+    pub liquidation_config: LiquidationConfig,
+}
+
+#[derive(AnchorDeserialize, AnchorSerialize, Debug, PartialEq, Clone, Default)]
+pub struct SundialProfileCollateral {
+    pub asset: AssetInfo,
+    pub sundial_collateral: Pubkey,
+    pub config: SundialProfileCollateralConfig,
+}
+
 impl AssetInfo {
     #[inline(always)]
     pub fn update_amount(&mut self, new_amount: u64) -> ProgramResult {
+        self.total_value = get_raw_from_uint!(Decimal(U192(self.total_value))
+            .try_mul(new_amount)?
+            .try_div(self.amount)?);
         self.amount = new_amount;
         Ok(())
     }
@@ -341,18 +389,20 @@ impl SundialProfileCollateral {
         vipers::assert_keys_eq!(
             sundial_collateral_info.key,
             self.sundial_collateral,
-            "Invalid reserve given for refreshing"
+            "Invalid Sundial Collateral given for refreshing"
         );
 
-        let sundial_collateral: SundialCollateral = anchor_lang::AnchorDeserialize::deserialize(
-            &mut sundial_collateral_info.try_borrow_mut_data()?.as_ref(),
-        )?;
+        let sundial_collateral: SundialCollateral =
+            anchor_lang::AccountDeserialize::try_deserialize(
+                &mut sundial_collateral_info.try_borrow_mut_data()?.as_ref(),
+            )?;
 
         sundial_collateral.last_updated_slot.check_stale(
             clock,
             SUNDIAL_COLLATERAL_STALE_TOL,
             "Sundial Collateral Is Stale",
         )?;
+
         self.asset.total_value = get_raw_from_uint!(log_then_prop_err!(Decimal(U192(
             sundial_collateral.collateral_price
         ))
@@ -365,31 +415,19 @@ impl SundialProfileCollateral {
     pub fn init_collateral(
         amount: u64,
         sundial_collateral: &Account<SundialCollateral>,
-        clock: &Clock,
     ) -> Result<Self, ProgramError> {
-        sundial_collateral.last_updated_slot.check_stale(
-            clock,
-            SUNDIAL_COLLATERAL_STALE_TOL,
-            "Sundial Collateral Is Stale",
-        )?;
+        let collateral_price = Decimal(U192(sundial_collateral.collateral_price));
+        let total_value = get_raw_from_uint!(log_then_prop_err!(collateral_price.try_mul(amount)));
+
         Ok(SundialProfileCollateral {
             asset: AssetInfo {
                 amount,
-                total_value: get_raw_from_uint!(log_then_prop_err!(Decimal(U192(
-                    sundial_collateral.collateral_price
-                ))
-                .try_mul(amount))),
+                total_value,
             },
             sundial_collateral: sundial_collateral.key(),
             config: sundial_collateral.sundial_collateral_config.clone().into(),
         })
     }
-}
-
-#[derive(AnchorDeserialize, AnchorSerialize, Debug, PartialEq, Clone, Default)]
-pub struct SundialProfileCollateralConfig {
-    pub ltv: LTV,
-    pub liquidation_config: LiquidationConfig,
 }
 
 impl From<SundialCollateralConfig> for SundialProfileCollateralConfig {

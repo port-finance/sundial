@@ -14,6 +14,8 @@ import { SundialCollateralWrapper } from './sundialCollateralWrapper';
 import { getATAAddress, getOrCreateATA } from '@saberhq/token-utils';
 import { TOKEN_PROGRAM_ID } from '@solana/spl-token';
 import { SundialWrapper } from './sundialWrapper';
+import { Buffer2BN } from './index';
+
 const PROFILE = 'profile';
 export class SundialProfileWrapper extends SundialAccountWrapper {
   constructor(sdk: SundialSDK) {
@@ -34,17 +36,79 @@ export class SundialProfileWrapper extends SundialAccountWrapper {
     );
   }
 
+  public getTotalCollateralValue() {
+    this.checkStateValid();
+    return this.sundialProfileData.collaterals.reduce((acc, c) => {
+      return Buffer2BN(c.asset.totalValue).add(acc);
+    }, new BN(0));
+  }
+
+  public getTotalLoanValue() {
+    this.checkStateValid();
+    return this.sundialProfileData.loans.reduce((acc, l) => {
+      return Buffer2BN(l.asset.totalValue).add(acc);
+    }, new BN(0));
+  }
+
+  public getBorrowingPower() {
+    this.checkStateValid();
+    return this.sundialProfileData.collaterals.reduce((acc, c) => {
+      const value = Buffer2BN(c.asset.totalValue).add(acc);
+      return value.muln(c.config.ltv.ltv).divn(100);
+    }, new BN(0));
+  }
+
+  public getLiquidationThreshold() {
+    this.checkStateValid();
+    return this.sundialProfileData.collaterals.reduce((acc, c) => {
+      const value = Buffer2BN(c.asset.totalValue).add(acc);
+      return value.muln(c.config.liquidationConfig.liquidationThreshold);
+    }, new BN(0));
+  }
+
+  public getCollateral(sundialCollateral: PublicKey) {
+    this.checkStateValid();
+    return this.sundialProfileData.collaterals.filter(k =>
+      k.sundialCollateral.equals(sundialCollateral),
+    )[0];
+  }
+
+  public getCollateralAmount(sundialCollateral: PublicKey) {
+    return this.getCollateral(sundialCollateral)?.asset.amount ?? new BN(0);
+  }
+
+  public getCollateralValue(sundialCollateral: PublicKey) {
+    const totalValue = this.getCollateral(sundialCollateral)?.asset.totalValue;
+    return totalValue ? Buffer2BN(totalValue) : new BN(0);
+  }
+
+  public getLoan(sundial: PublicKey) {
+    this.checkStateValid();
+    return this.sundialProfileData.loans.filter(l =>
+      l.sundial.equals(sundial),
+    )[0];
+  }
+
+  public getLoanAmount(sundial: PublicKey) {
+    return this.getLoan(sundial)?.asset.amount ?? new BN(0);
+  }
+
+  public getLoanValue(sundial: PublicKey) {
+    const totalValue = this.getLoan(sundial)?.asset.totalValue;
+    return totalValue ? Buffer2BN(totalValue) : new BN(0);
+  }
+
   public async createSundialProfile(
-    user: PublicKey,
     sundialMarket: PublicKey,
+    userPubkey?: PublicKey,
   ): Promise<TransactionEnvelope> {
+    const user = userPubkey ?? this.program.provider.wallet.publicKey;
     const [sundialProfile, bump] =
       await SundialProfileWrapper.getSundialProfileKey(user, sundialMarket);
-
     this.publicKey = sundialProfile;
     const ix = this.program.instruction.initializeSundialProfile(
-      bump,
       sundialMarket,
+      bump,
       {
         accounts: {
           sundialProfile,
@@ -66,7 +130,7 @@ export class SundialProfileWrapper extends SundialAccountWrapper {
       },
     });
 
-    const sundialProfile = this.sundialProfile;
+    const sundialProfile = this.sundialProfileData;
     const collaterals = sundialProfile.collaterals.map(
       c => c.sundialCollateral,
     );
@@ -80,7 +144,6 @@ export class SundialProfileWrapper extends SundialAccountWrapper {
     });
 
     ix.keys.push(...collateralAndOraclesMetas);
-
     return new TransactionEnvelope(this.sdk.provider, [ix]);
   }
 
@@ -118,7 +181,6 @@ export class SundialProfileWrapper extends SundialAccountWrapper {
         tokenProgram: TOKEN_PROGRAM_ID,
         user,
         transferAuthority,
-        clock: SYSVAR_CLOCK_PUBKEY,
       },
     });
     const tx = new TransactionEnvelope(this.sdk.provider, [ix]);
@@ -141,6 +203,7 @@ export class SundialProfileWrapper extends SundialAccountWrapper {
     )[0];
     const sundialAuthority = (await sundialWrapper.getAuthorityAndBump())[0];
     const feeReceiverWallet = (await sundialWrapper.getFeeReceiverAndBump())[0];
+    const loan = this.getLoan(sundialWrapper.publicKey);
 
     const { address: userPrincipleWallet, instruction: ix1 } =
       userPrincipleWalletPubkey
@@ -170,6 +233,13 @@ export class SundialProfileWrapper extends SundialAccountWrapper {
         },
       },
     );
+    if (!loan) {
+      ix2.keys.push({
+        isSigner: false,
+        isWritable: false,
+        pubkey: sundialWrapper.sundialData.oracle,
+      });
+    }
     return new TransactionEnvelope(
       this.sdk.provider,
       [ix1, ix2].filter(ix => !!ix),
@@ -185,21 +255,24 @@ export class SundialProfileWrapper extends SundialAccountWrapper {
     this.checkStateValid();
 
     const user = userPubkey ?? this.program.provider.wallet.publicKey;
+
     const sundialCollateralAuthority = (
       await sundialCollateralWrapper.getAuthorityAndBump()
     )[0];
+
     const sundialCollateralPortLpWallet = (
       await sundialCollateralWrapper.getCollateralWalletAndBump()
     )[0];
+
     const { address: userPortLpWallet, instruction: ix1 } =
       userPortLpWalletPubkey
         ? {
             address: userPortLpWalletPubkey,
-            instruction: null,
+            instruction: undefined,
           }
         : await getOrCreateATA({
             provider: this.sdk.provider,
-            mint: userPortLpWalletPubkey,
+            mint: sundialCollateralWrapper.sundialCollateralData.collateralMint,
             owner: user,
           });
 
@@ -259,8 +332,6 @@ export class SundialProfileWrapper extends SundialAccountWrapper {
   }
 
   public async liquidateSundialProfile(
-    repayLiquidityWallet: PublicKey,
-    withdrawCollateralWallet: PublicKey,
     sundialCollateralWrapper: SundialCollateralWrapper,
     sundialWrapper: SundialWrapper,
     userRepayLiquidityWallet: PublicKey,

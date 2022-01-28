@@ -87,10 +87,11 @@ export class SundialCollateralWrapper extends SundialAccountWrapper {
 
   public async refreshSundialCollateral(
     reserve: ParsedAccount<ReserveData>,
+    refreshReserve = true,
   ): Promise<TransactionEnvelope> {
     this.checkStateValid();
     invariant(
-      this.sundialCollateralData.portCollateralReserve == reserve.pubkey,
+      this.sundialCollateralData.portCollateralReserve.equals(reserve.pubkey),
       'Wrong reserve provided',
     );
     const ix = this.program.instruction.refreshSundialCollateral({
@@ -100,19 +101,23 @@ export class SundialCollateralWrapper extends SundialAccountWrapper {
         clock: SYSVAR_CLOCK_PUBKEY,
       },
     });
-    return new TransactionEnvelope(this.sdk.provider, [
-      refreshReserveInstruction(
-        reserve.pubkey,
-        reserve.data.liquidity.oracleOption == 1
-          ? reserve.data.liquidity.oraclePubkey
-          : null,
-      ),
-      ix,
-    ]);
+
+    const tx = refreshReserve
+      ? [
+          refreshReserveInstruction(
+            reserve.pubkey,
+            reserve.data.liquidity.oracleOption == 1
+              ? reserve.data.liquidity.oraclePubkey
+              : null,
+          ),
+          ix,
+        ]
+      : [ix];
+    return new TransactionEnvelope(this.sdk.provider, tx);
   }
 }
 
-export interface SundialCollateralConfigParams {
+export interface SundialCollateralConfigs {
   ltv: number;
   liquidationThreshold: number;
   liquidationPenalty: number;
@@ -123,5 +128,5 @@ export interface CreateSundialCollateralParams {
   name: string;
   reserve: ParsedAccount<ReserveData>;
   sundialMarket: PublicKey;
-  config: SundialCollateralConfigParams;
+  config: SundialCollateralConfigs;
 }

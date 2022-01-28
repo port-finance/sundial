@@ -24,7 +24,7 @@ import {
 
 import { expectTX } from '@saberhq/chai-solana';
 import { SundialProfileWrapper, SundialWrapper } from './wrappers';
-import { SundialCollateralWrapper } from './wrappers/sundial/sundialCollateralWrapper';
+import { SundialCollateralWrapper } from './wrappers';
 
 const AUTHORITY = 'authority';
 const FEE_RECEIVER_KEY = 'fee_receiver';

@@ -97,13 +97,16 @@ pub fn get_pyth_oracle_price(oracle: &AccountInfo, clock: &Clock) -> Result<Deci
     let slots_elapsed = unwrap_int!(clock.slot.checked_sub(pyth_price.valid_slot));
 
     vipers::invariant!(
-        slots_elapsed >= STALE_AFTER_SLOTS_ELAPSED,
+        slots_elapsed <= STALE_AFTER_SLOTS_ELAPSED,
         SundialError::InvalidOracleConfig,
-        "Oracle price is stale"
+        &format!(
+            "Oracle price is stale, current {:?}, last_update {:?}:",
+            clock.slot, pyth_price.valid_slot
+        )
     );
 
     let price: u64 = pyth_price.agg.price.try_into().map_err(|_| {
-        msg!("Oracle price cannot be negative");
+        msg!("Oracle price cannot be negative {:?}", pyth_price.agg.price);
         SundialError::InvalidOracleConfig
     })?;
 

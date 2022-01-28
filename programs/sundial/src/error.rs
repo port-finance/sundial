@@ -43,4 +43,5 @@ pub enum SundialError {
     InvalidPortReserve,
     InvalidTokenProgram,
     InvalidPortLendingProgram,
+    InvalidSundialCollateralConfig,
 }
