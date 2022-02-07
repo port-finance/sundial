@@ -1,6 +1,8 @@
 # ⏰ Sundial
 
-Sundial is a yield tokenizer program on Solana. It tokenizes a user's position into two parts:
+Sundial enables fixed rate borrowing and lending on Solana. 
+
+It tokenizes a user's position on Port into two parts:
 - principal tokens (maps one-to-one to the underlying token)
 - yield tokens (variable part which depends on the yield of the underlying protocols)
 
