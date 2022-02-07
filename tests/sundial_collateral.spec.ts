@@ -263,7 +263,7 @@ describe('SundialCollateral', () => {
     expect(sundialWrapper.sundialData.oracle).eqAddress(usdcOracleKP.publicKey);
   });
 
-  const LIQUIDITY_CAP = new BN(10_000_000_000);
+  const liquidityCap = new BN(10_000_000_000);
   it('Initialize Sundial Collateral', async () => {
     const createTx = await sundialCollateralWrapper.createSundialCollateral({
       name: sundialCollateralName,
@@ -271,7 +271,7 @@ describe('SundialCollateral', () => {
       sundialMarket: sundialMarketBase.publicKey,
       config: {
         ...DEFAULT_SUNDIAL_COLLATERAL_CONFIG,
-        liquidityCap: LIQUIDITY_CAP,
+        liquidityCap,
       },
     });
 
@@ -403,7 +403,7 @@ describe('SundialCollateral', () => {
 
   it('Deposit Sundial Collateral (Fail Exceed Liquidity Cap)', async () => {
     const depositTx = await sundialProfileWrapper.depositSundialCollateral(
-      LIQUIDITY_CAP,
+      liquidityCap,
       sundialCollateralWrapper,
     );
     await expectTX(depositTx, 'Deposit Collateral Liquidity').to.be.rejected;
