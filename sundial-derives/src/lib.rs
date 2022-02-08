@@ -1,15 +1,16 @@
 extern crate proc_macro;
 
 use proc_macro::TokenStream;
-use quote::quote;
+use quote::{format_ident, quote, ToTokens};
 
 use syn::parse::{Parse, ParseStream};
 use syn::punctuated::Punctuated;
 use syn::Data::Struct;
 use syn::Fields::Named;
-use syn::Ident;
-use syn::{parse_macro_input, Token};
+use syn::Stmt;
+use syn::{parse_macro_input, Expr, ExprCall, FnArg, ItemFn, Pat, Token};
 use syn::{Data, DeriveInput};
+use syn::{Ident, Signature};
 
 #[proc_macro_derive(CheckSundialNotEnd)]
 pub fn check_sundial_not_end(input: TokenStream) -> TokenStream {
@@ -19,7 +20,11 @@ pub fn check_sundial_not_end(input: TokenStream) -> TokenStream {
     (quote! {
         impl<'a> crate::helpers::CheckSundialNotEnd for #name<'a> {
              fn check_sundial_not_end(&self) -> ProgramResult {
-                vipers::invariant!(self.sundial.end_unix_time_stamp > self.clock.unix_timestamp, crate::error::SundialError::AlreadyEnd);
+                vipers::invariant!(self.sundial.end_unix_time_stamp > self.clock.unix_timestamp, crate::error::SundialError::AlreadyEnd,
+                &format!(
+                "Sundial ends at {:?}, currrm rm ent time {:?}",
+                    self.sundial.end_unix_time_stamp, self.clock.unix_timestamp
+                ));
                 Ok(())
             }
         }
@@ -198,4 +203,55 @@ pub fn validates(attr: TokenStream, item: TokenStream) -> TokenStream {
         #ast
     })
     .into()
+}
+
+#[proc_macro_attribute]
+pub fn process(_: TokenStream, declaration: TokenStream) -> TokenStream {
+    let access_control_tokens = "#[access_control(ctx.accounts.validate())]\
+        #[allow(clippy::too_many_arguments)]\
+        pub fn f() -> ProgramResult {}"
+        .parse()
+        .unwrap();
+
+    let mut item_fn = parse_macro_input!(access_control_tokens as ItemFn);
+    let sig = parse_macro_input!(declaration as ItemFn).sig;
+    item_fn.sig = Signature {
+        output: item_fn.sig.output,
+        ..sig
+    };
+    let function_name = format_ident!("process_{}", item_fn.sig.ident);
+
+    let args: Vec<_> = item_fn
+        .sig
+        .inputs
+        .iter()
+        .map(get_arg_ident_from_fn_arg)
+        .collect();
+
+    let expr_call_tokens = quote! {
+        #function_name(#(#args),*)
+    }
+    .into();
+    let expr_call = parse_macro_input!(expr_call_tokens as ExprCall);
+
+    item_fn.block.stmts.push(Stmt::Expr(Expr::Call(expr_call)));
+    let res = item_fn.into_token_stream();
+    res.into()
+}
+
+fn get_arg_ident_from_fn_arg(fn_arg: &FnArg) -> Ident {
+    match fn_arg {
+        FnArg::Typed(p) => {
+            let pat = p.pat.clone();
+            match *pat {
+                Pat::Ident(i) => i.ident,
+                _ => {
+                    panic!("Invalid function signature")
+                }
+            }
+        }
+        FnArg::Receiver(_) => {
+            format_ident!("self")
+        }
+    }
 }

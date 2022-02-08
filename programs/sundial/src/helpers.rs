@@ -21,6 +21,11 @@ macro_rules! seeds {
     };
 }
 
+pub fn price_per_lamport(price: Decimal, decimals: u8) -> Result<Decimal, ProgramError> {
+    let divisor = unwrap_int!(10u64.checked_pow(decimals as u32));
+    price.try_div(divisor)
+}
+
 #[inline(always)]
 pub fn create_transfer_cpi<'a, 'b, 'c, 'info>(
     from: AccountInfo<'info>,

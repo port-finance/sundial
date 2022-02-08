@@ -17,6 +17,7 @@ import { SundialWrapper } from './sundialWrapper';
 import { Buffer2BN } from './index';
 
 const PROFILE = 'profile';
+
 export class SundialProfileWrapper extends SundialAccountWrapper {
   constructor(sdk: SundialSDK) {
     super(sdk, 'sundialProfile');
@@ -53,16 +54,20 @@ export class SundialProfileWrapper extends SundialAccountWrapper {
   public getBorrowingPower() {
     this.checkStateValid();
     return this.sundialProfileData.collaterals.reduce((acc, c) => {
-      const value = Buffer2BN(c.asset.totalValue).add(acc);
-      return value.muln(c.config.ltv.ltv).divn(100);
+      const value = Buffer2BN(c.asset.totalValue)
+        .muln(c.config.ltv.ltv)
+        .divn(100);
+      return value.add(acc);
     }, new BN(0));
   }
 
   public getLiquidationThreshold() {
     this.checkStateValid();
     return this.sundialProfileData.collaterals.reduce((acc, c) => {
-      const value = Buffer2BN(c.asset.totalValue).add(acc);
-      return value.muln(c.config.liquidationConfig.liquidationThreshold);
+      const value = Buffer2BN(c.asset.totalValue)
+        .muln(c.config.liquidationConfig.liquidationThreshold)
+        .divn(100);
+      return value.add(acc);
     }, new BN(0));
   }
 

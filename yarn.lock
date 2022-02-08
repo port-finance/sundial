@@ -80,10 +80,10 @@
     "@nodelib/fs.scandir" "2.1.5"
     fastq "^1.6.0"
 
-"@port.finance/mock-oracles@^0.0.3":
-  version "0.0.3"
-  resolved "https://registry.yarnpkg.com/@port.finance/mock-oracles/-/mock-oracles-0.0.3.tgz#4b2620e1d458aaa11a425ce7a177b2208586b1b6"
-  integrity sha512-oHkeo8+7S564e7a+JDpO/sfNB9ouK5qlJzUnAPPg/yiFFmRtc58ix2MNjY0HalwbqsEbIEojDm8zlIVo12lnYg==
+"@port.finance/mock-oracles@^0.0.5":
+  version "0.0.5"
+  resolved "https://registry.yarnpkg.com/@port.finance/mock-oracles/-/mock-oracles-0.0.5.tgz#328dc97c5b7ee39128bb73e2c967946cd4d5dcb5"
+  integrity sha512-xsncR7ZqMzuMH13MRNSlJMjEQyhHGAhd6O3pwRpTIh2M8jLcDklDDrss6Zy2QTA4tMaYJhMEdGB7ivYD0BWXaQ==
   dependencies:
     "@project-serum/anchor" "^0.20.0"
     "@pythnetwork/client" "^2.5.1"
@@ -201,6 +201,15 @@
   version "2.5.1"
   resolved "https://registry.yarnpkg.com/@pythnetwork/client/-/client-2.5.1.tgz#f15c1f2394157f4a97fa8725b93ad887d534e776"
   integrity sha512-QXt31aWuVi02yvjmNEFDKurTkeTL/BEM4Ney4uixUbkxZDSrYRUuYNXPTrylRLdT3C3DlbF858/Jt7DwtLMR2w==
+  dependencies:
+    "@solana/web3.js" "^1.30.2"
+    assert "^2.0.0"
+    buffer "^6.0.1"
+
+"@pythnetwork/client@^2.5.3":
+  version "2.5.3"
+  resolved "https://registry.yarnpkg.com/@pythnetwork/client/-/client-2.5.3.tgz#86c9f92d01d8f282fdd8b5b11039da654e263988"
+  integrity sha512-NBLxPnA6A3tZb/DYUooD4SO63UJ70s9DzzFPGXcQNBR9itcycp7aaV+UA5oUPloD/4UHL9soo2fRuDVur0gmhA==
   dependencies:
     "@solana/web3.js" "^1.30.2"
     assert "^2.0.0"

@@ -15,7 +15,7 @@ pub enum SundialError {
     //305
     #[msg("Not the redeem time yet")]
     NotEndYet,
-    #[msg("Contract already end")]
+    #[msg("SundialPool has already ended")]
     AlreadyEnd,
     ExceedLiquidityCap,
     InvalidOracleConfig,

@@ -1,0 +1,172 @@
+use crate::helpers::*;
+use crate::state::{Sundial, SundialCollateral, SundialProfile};
+use anchor_lang::prelude::*;
+use anchor_spl::token::{Token, TokenAccount};
+
+use sundial_derives::{validates, CheckSundialProfileStale};
+
+use itertools::Itertools;
+use paste::paste;
+use std::cmp::{max, min};
+
+use crate::event::*;
+use crate::helpers::create_transfer_cpi;
+use anchor_spl::token::transfer;
+
+use crate::error::SundialError;
+
+use solana_maths::{Decimal, TryDiv, U192};
+
+#[validates(check_sundial_profile_stale)]
+#[derive(Accounts, Clone, CheckSundialProfileStale)]
+#[instruction()]
+pub struct LiquidateSundialProfile<'info> {
+    #[account(mut)]
+    pub sundial_profile: Box<Account<'info, SundialProfile>>,
+    #[account(mut)]
+    pub user_repay_liquidity_wallet: Account<'info, TokenAccount>,
+    #[account(mut)]
+    pub user_withdraw_collateral_wallet: Account<'info, TokenAccount>,
+    #[account(has_one=token_program @ SundialError::InvalidTokenProgram)]
+    pub sundial: Box<Account<'info, Sundial>>,
+    #[account(mut, seeds = [sundial.key().as_ref(), b"liquidity"], bump = sundial.bumps.port_liquidity_bump)]
+    pub sundial_liquidity_wallet: Account<'info, TokenAccount>,
+    #[account(has_one=token_program @ SundialError::InvalidTokenProgram)]
+    pub sundial_collateral: Box<Account<'info, SundialCollateral>>,
+    #[account(seeds=[sundial_collateral.key().as_ref(), b"authority"], bump=sundial_collateral.bumps.authority_bump)]
+    pub sundial_collateral_authority: UncheckedAccount<'info>,
+    #[account(mut, seeds = [sundial_collateral.key().as_ref(), b"lp"], bump = sundial_collateral.bumps.port_lp_bump)]
+    pub sundial_collateral_wallet: Box<Account<'info, TokenAccount>>, //Port Lp token Account
+    pub transfer_authority: Signer<'info>,
+    pub token_program: Program<'info, Token>,
+    pub clock: Sysvar<'info, Clock>,
+}
+
+pub fn process_liquidate_sundial_profile(ctx: Context<LiquidateSundialProfile>) -> ProgramResult {
+    let user_wallet = &ctx.accounts.user_repay_liquidity_wallet;
+    let sundial_profile = &mut ctx.accounts.sundial_profile;
+
+    let current_ts = ctx.accounts.clock.unix_timestamp;
+    let no_overtime_loans = !sundial_profile
+        .loans
+        .iter()
+        .any(|l| l.is_overtime(current_ts));
+
+    let max_repay_amount = if user_wallet
+        .delegate
+        .map_or(false, |d| d == ctx.accounts.transfer_authority.key())
+    {
+        user_wallet.delegated_amount
+    } else {
+        user_wallet.amount
+    };
+
+    let sundial_key = ctx.accounts.sundial.key();
+    let is_unhealthy = log_then_prop_err!(sundial_profile.check_if_unhealthy());
+
+    //Only allowed repay 50%
+    let allowed_repay_value_when_no_overtime = log_then_prop_err!(sundial_profile
+        .get_borrowed_value()
+        .and_then(|d| d.try_div(2)));
+
+    let (collaterals, loans) = sundial_profile.get_mut_collaterals_and_loans();
+    let (loan_pos, loan_to_repay) = vipers::unwrap_opt!(
+        loans.iter_mut().find_position(|l| l.sundial == sundial_key),
+        "This profile doesn't have this loan asset"
+    );
+    let is_loan_overtime = loan_to_repay.is_overtime(current_ts);
+
+    let allowed_repay_value = if is_loan_overtime {
+        max(
+            Decimal(U192(loan_to_repay.asset.total_value)),
+            allowed_repay_value_when_no_overtime,
+        )
+    } else {
+        allowed_repay_value_when_no_overtime
+    };
+
+    let sundial_collateral_key = ctx.accounts.sundial_collateral.key();
+    let (collateral_pos, collateral_to_withdraw) = vipers::unwrap_opt!(
+        collaterals
+            .iter_mut()
+            .find_position(|c| c.sundial_collateral == sundial_collateral_key),
+        "Withdraw collateral doesn't exist"
+    );
+
+    vipers::invariant!(
+        no_overtime_loans || is_loan_overtime,
+        SundialError::InvalidLiquidation,
+        "Should liquidate overtime loans first"
+    );
+
+    vipers::invariant!(
+        is_loan_overtime || is_unhealthy,
+        SundialError::InvalidLiquidation,
+        "Only overtime or unhealthy profile can be liquidated"
+    );
+
+    let available_withdraw_value = Decimal(U192(collateral_to_withdraw.asset.total_value));
+    let available_repay_value = log_then_prop_err!(collateral_to_withdraw
+        .config
+        .liquidation_config
+        .get_repay_value(available_withdraw_value));
+
+    let possible_repay_amount = log_then_prop_err!(loan_to_repay
+        .asset
+        .get_amount(min(allowed_repay_value, available_repay_value))
+        .and_then(|d| d.try_floor_u64()));
+
+    let repay_amount = min(
+        min(max_repay_amount, possible_repay_amount),
+        loan_to_repay.asset.amount,
+    );
+
+    let withdraw_value = log_then_prop_err!(collateral_to_withdraw
+        .config
+        .liquidation_config
+        .get_liquidation_value(loan_to_repay.asset.get_value(repay_amount)?));
+    let withdraw_amount = log_then_prop_err!(collateral_to_withdraw
+        .asset
+        .get_amount(withdraw_value)
+        .and_then(|d| d.try_ceil_u64()));
+
+    if log_then_prop_err!(loan_to_repay.asset.reduce_amount(repay_amount)) == 0 {
+        loans.remove(loan_pos);
+    };
+    if log_then_prop_err!(collateral_to_withdraw.asset.reduce_amount(withdraw_amount)) == 0 {
+        collaterals.remove(collateral_pos);
+    };
+
+    log_then_prop_err!(transfer(
+        create_transfer_cpi(
+            ctx.accounts.user_repay_liquidity_wallet.to_account_info(),
+            ctx.accounts.sundial_liquidity_wallet.to_account_info(),
+            ctx.accounts.transfer_authority.to_account_info(),
+            &[],
+            ctx.accounts.token_program.to_account_info(),
+        ),
+        repay_amount
+    ));
+
+    log_then_prop_err!(transfer(
+        create_transfer_cpi(
+            ctx.accounts.sundial_collateral_wallet.to_account_info(),
+            ctx.accounts
+                .user_withdraw_collateral_wallet
+                .to_account_info(),
+            ctx.accounts.sundial_collateral_authority.to_account_info(),
+            seeds!(ctx, sundial_collateral, authority),
+            ctx.accounts.token_program.to_account_info(),
+        ),
+        withdraw_amount
+    ));
+
+    emit!(DidLiquidate {
+        repay_amount,
+        withdraw_amount,
+        repay_mint: ctx.accounts.sundial_liquidity_wallet.mint,
+        withdraw_mint: ctx.accounts.sundial_collateral.collateral_mint,
+        user_wallet: ctx.accounts.user_repay_liquidity_wallet.owner
+    });
+    Ok(())
+}

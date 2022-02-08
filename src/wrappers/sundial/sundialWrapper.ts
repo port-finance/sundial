@@ -8,7 +8,6 @@ import {
 import { TransactionEnvelope } from '@saberhq/solana-contrib';
 
 import { SundialSDK } from '../../sdk';
-import invariant from 'tiny-invariant';
 import { TOKEN_PROGRAM_ID } from '@solana/spl-token';
 import BN from 'bn.js';
 import {
@@ -20,6 +19,7 @@ import { getATAAddress, getOrCreateATA, MAX_U64 } from '@saberhq/token-utils';
 import { SundialAccountWrapper } from './sundialAccountWrapper';
 import { SUNDIAL_ADDRESSES } from '../../constants';
 import { utils } from '@project-serum/anchor';
+import { divCeiln } from '../../../tests/utils';
 
 const PORT_LENDING = new PublicKey(
   'Port7uDYB3wk6GJAw4KT1WpTeMtSu9bTcChBHkX2LfR',
@@ -30,15 +30,10 @@ export class SundialWrapper extends SundialAccountWrapper {
     super(sdk, 'sundial');
   }
 
-  public getSundial(): PublicKey {
-    invariant(this.publicKey, 'sundial key not set');
-    return this.publicKey;
-  }
-
   public getBorrowFee(borrowAmount: BN) {
     this.checkStateValid();
     const feeBips = this.sundialData.config.borrowFee.bips;
-    return borrowAmount.muln(feeBips).addn(9999).divn(10000);
+    return divCeiln(borrowAmount.muln(feeBips), 10000);
   }
 
   public async getUserPrincipleWallet(userPubkey?: PublicKey) {
@@ -49,7 +44,7 @@ export class SundialWrapper extends SundialAccountWrapper {
     });
   }
 
-  static async getSundialKey(
+  static async getSundialKeyAndBump(
     name: string,
     sundialMarket: PublicKey,
   ): Promise<[PublicKey, number]> {
@@ -82,7 +77,7 @@ export class SundialWrapper extends SundialAccountWrapper {
     lendingFeeInBips?: number;
     borrowingFeeInBips?: number;
   }): Promise<TransactionEnvelope> {
-    const [sundial, pdaBump] = await SundialWrapper.getSundialKey(
+    const [sundial, pdaBump] = await SundialWrapper.getSundialKeyAndBump(
       sundialName,
       sundialMarket,
     );

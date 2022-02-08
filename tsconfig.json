@@ -6,6 +6,7 @@
     "module": "commonjs",
     "target": "es6",
     "esModuleInterop": true,
-    "moduleResolution": "Node"
+    "moduleResolution": "Node",
+    "skipLibCheck": true
   }
 }

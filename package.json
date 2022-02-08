@@ -25,10 +25,11 @@
     "trailingComma": "all"
   },
   "dependencies": {
-    "@port.finance/mock-oracles": "^0.0.3",
+    "@port.finance/mock-oracles": "^0.0.5",
     "@port.finance/port-sdk": "^0.2.54",
     "@project-serum/anchor": "^0.18.0",
     "@project-serum/common": "^0.0.1-beta.3",
+    "@pythnetwork/client": "^2.5.3",
     "@saberhq/anchor-contrib": "^1.10.4",
     "@saberhq/chai-solana": "^1.10.4",
     "@solana/web3.js": "^1.31.0",

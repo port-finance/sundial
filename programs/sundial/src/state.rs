@@ -2,7 +2,7 @@ use crate::error::SundialError;
 use anchor_lang::prelude::*;
 use anchor_spl::token::{mint_to, transfer, Mint, MintTo, TokenAccount, Transfer};
 
-use crate::helpers::{get_pyth_oracle_price, SUNDIAL_COLLATERAL_STALE_TOL};
+use crate::helpers::{get_pyth_oracle_price, price_per_lamport, SUNDIAL_COLLATERAL_STALE_TOL};
 use solana_maths::{Decimal, Rate, TryAdd, TryDiv, TryMul, TrySub, U192};
 use vipers::{invariant, unwrap_int};
 
@@ -47,8 +47,9 @@ pub struct SundialConfig {
     pub borrow_fee: Fee,
     /// Maximum number of principal tokens that can be minted in lamports.
     pub liquidity_cap: LiquidityCap,
+    pub liquidity_decimals: u8,
     /// Padding to ensure that the outer u64 padding in [Sundial] is matched.
-    pub _config_padding: [u8; 6],
+    pub _config_padding: [u8; 5],
 }
 
 #[derive(AnchorDeserialize, AnchorSerialize, Debug, PartialEq, Clone, Default, Copy)]
@@ -177,6 +178,7 @@ pub struct SundialCollateralConfig {
     pub ltv: LTV,
     pub liquidation_config: LiquidationConfig,
     pub liquidity_cap: LiquidityCap,
+    pub collateral_decimals: u8,
 }
 
 impl SundialCollateralConfig {
@@ -224,6 +226,12 @@ impl LiquidationConfig {
     #[inline(always)]
     pub fn get_liquidation_margin(&self, asset_value: Decimal) -> Result<Decimal, ProgramError> {
         asset_value.try_mul(Rate::from_percent(self.liquidation_threshold))
+    }
+
+    #[inline(always)]
+    pub fn get_repay_value(&self, withdraw_value: Decimal) -> Result<Decimal, ProgramError> {
+        let liquidate_percentage = unwrap_int!(100u8.checked_add(self.liquidation_penalty));
+        withdraw_value.try_div(Rate::from_percent(liquidate_percentage))
     }
 }
 
@@ -444,6 +452,7 @@ pub struct SundialProfileLoan {
     pub oracle: Pubkey,
     pub sundial: Pubkey,
     pub maturity_unix_timestamp: i64,
+    pub liquidity_decimals: u8,
 }
 
 impl SundialProfileLoan {
@@ -454,9 +463,11 @@ impl SundialProfileLoan {
             "Invalid oracle given for refreshing"
         );
         let market_price = log_then_prop_err!(get_pyth_oracle_price(oracle, clock));
-
-        self.asset.total_value =
-            get_raw_from_uint!(log_then_prop_err!(market_price.try_mul(self.asset.amount)));
+        let market_price_per_lamport =
+            log_then_prop_err!(price_per_lamport(market_price, self.liquidity_decimals));
+        self.asset.total_value = get_raw_from_uint!(log_then_prop_err!(
+            market_price_per_lamport.try_mul(self.asset.amount)
+        ));
 
         Ok(())
     }
@@ -473,16 +484,21 @@ impl SundialProfileLoan {
         sundial: Pubkey,
         clock: &Clock,
         end_timestamp: i64,
+        liquidity_decimals: u8,
     ) -> Result<Self, ProgramError> {
         let market_price = log_then_prop_err!(get_pyth_oracle_price(oracle, clock));
+        let market_price_per_lamport =
+            log_then_prop_err!(price_per_lamport(market_price, liquidity_decimals));
+
         Ok(SundialProfileLoan {
             asset: AssetInfo {
                 amount,
-                total_value: get_raw_from_uint!(market_price.try_mul(amount)?),
+                total_value: get_raw_from_uint!(market_price_per_lamport.try_mul(amount)?),
             },
             oracle: oracle.key(),
             sundial,
             maturity_unix_timestamp: end_timestamp,
+            liquidity_decimals,
         })
     }
 

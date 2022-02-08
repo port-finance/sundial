@@ -115,6 +115,24 @@ export class SundialCollateralWrapper extends SundialAccountWrapper {
       : [ix];
     return new TransactionEnvelope(this.sdk.provider, tx);
   }
+
+  public async changeConfig(
+    config: SundialCollateralConfigs,
+    sundialOwner?: PublicKey,
+  ): Promise<TransactionEnvelope> {
+    const owner = sundialOwner ?? this.sdk.provider.wallet.publicKey;
+    const changeIx = this.program.instruction.changeSundialCollateralConfig(
+      config,
+      {
+        accounts: {
+          sundialCollateral: this.publicKey,
+          owner,
+          sundialMarket: this.sundialCollateralData.sundialMarket,
+        },
+      },
+    );
+    return new TransactionEnvelope(this.sdk.provider, [changeIx]);
+  }
 }
 
 export interface SundialCollateralConfigs {
