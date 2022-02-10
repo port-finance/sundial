@@ -19,11 +19,14 @@ import { getATAAddress, getOrCreateATA, MAX_U64 } from '@saberhq/token-utils';
 import { SundialAccountWrapper } from './sundialAccountWrapper';
 import { SUNDIAL_ADDRESSES } from '../../constants';
 import { utils } from '@project-serum/anchor';
-import { divCeiln } from '../../../tests/utils';
 
 const PORT_LENDING = new PublicKey(
   'Port7uDYB3wk6GJAw4KT1WpTeMtSu9bTcChBHkX2LfR',
 );
+
+function divCeiln(dividend: BN, divisor: number): BN {
+  return dividend.addn(divisor - 1).divn(divisor);
+}
 
 export class SundialWrapper extends SundialAccountWrapper {
   constructor(sdk: SundialSDK) {
