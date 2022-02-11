@@ -8,8 +8,8 @@ use solana_maths::{Decimal, TryDiv, TryMul};
 use vipers::unwrap_int;
 use vipers::VipersError;
 
-pub const SUNDIAL_COLLATERAL_STALE_TOL: u64 = 10;
-pub const SUNDIAL_PROFILE_STALE_TOL: u64 = 10;
+pub const SUNDIAL_COLLATERAL_STALE_TOL: u64 = 10; //The collateral (port lp) token price would be invalid after 10 slots
+pub const SUNDIAL_PROFILE_STALE_TOL: u64 = 10; //The asset infos in sundial profile would be invalid after 10 slots
 macro_rules! seeds {
     ($ctx:ident, $account: ident, $bump_name: ident) => {
         paste! {  &[&[

@@ -17,6 +17,8 @@ use anchor_spl::token::transfer;
 #[validates(check_sundial_profile_market)]
 #[derive(Accounts, Clone, CheckSundialProfileMarket)]
 #[instruction(amount:u64)]
+//Repay sundial loan, repay liquidity token, i.e., repay USDC if you mint ppUSDC before.
+//It will repay min(amount, loan_amount), e.g., you can pass u64::max to amount if you want repay all.
 pub struct RepaySundialLiquidity<'info> {
     #[account(mut, has_one=user @ SundialError::InvalidProfileUser)]
     pub sundial_profile: Box<Account<'info, SundialProfile>>,

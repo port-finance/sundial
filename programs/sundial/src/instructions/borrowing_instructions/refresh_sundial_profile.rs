@@ -6,6 +6,7 @@ use sundial_derives::validates;
 #[validates()]
 #[derive(Accounts, Clone)]
 #[instruction()]
+//Refresh sundial profile's asset value
 pub struct RefreshSundialProfile<'info> {
     #[account(mut)]
     pub sundial_profile: Box<Account<'info, SundialProfile>>,

@@ -18,12 +18,12 @@ pub struct InitializeSundialCollateral<'info> {
     #[account(init, payer=owner, seeds = [sundial_market.key().as_ref(), b"collateral", name.as_ref()], bump = pda_bump)]
     pub sundial_collateral: Account<'info, SundialCollateral>,
     #[account(seeds=[sundial_collateral.key().as_ref(), b"authority"], bump=bumps.authority_bump)]
-    pub sundial_collateral_authority: UncheckedAccount<'info>,
+    pub sundial_collateral_authority: UncheckedAccount<'info>, //Authority of the sundial collateral pool, which is needed when transfer funds within users and the sundialCollateral's collateral wallet.
     #[account(init, payer=owner, seeds = [sundial_collateral.key().as_ref(), b"lp"], bump = bumps.port_lp_bump, token::authority=sundial_collateral_authority, token::mint=port_lp_mint)]
     pub sundial_collateral_lp_wallet: Box<Account<'info, TokenAccount>>, //Port Lp token Account
-    pub port_collateral_reserve: Box<Account<'info, PortReserve>>,
+    pub port_collateral_reserve: Box<Account<'info, PortReserve>>, //The reserve of the port lp token which is accepted in this sundial collateral pool
     #[account(address = port_collateral_reserve.collateral.mint_pubkey)]
-    pub port_lp_mint: Box<Account<'info, Mint>>,
+    pub port_lp_mint: Box<Account<'info, Mint>>, //Mint of the port lp (collateral) token
     pub token_program: Program<'info, Token>,
     pub system_program: Program<'info, System>,
     pub rent: Sysvar<'info, Rent>,

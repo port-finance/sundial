@@ -2,6 +2,7 @@ use crate::state::SundialProfile;
 use anchor_lang::prelude::*;
 use sundial_derives::*;
 
+//Sundial market is given, the profile can only be used with the collateral and sundial in the same market
 #[validates()]
 #[derive(Accounts, Clone)]
 #[instruction(sundial_market: Pubkey, bump: u8)]

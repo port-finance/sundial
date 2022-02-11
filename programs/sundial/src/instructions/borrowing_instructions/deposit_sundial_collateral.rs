@@ -12,6 +12,8 @@ use anchor_spl::token::transfer;
 use crate::error::SundialError;
 use crate::state::SundialProfileCollateral;
 
+//Deposit port lp tokens as collateral into sundial profile to gain borrowing power.
+//Sundial profile should be created and inited.
 #[validates(check_sundial_profile_market)]
 #[derive(Accounts, Clone, CheckSundialProfileMarket)]
 #[instruction(amount:u64)]

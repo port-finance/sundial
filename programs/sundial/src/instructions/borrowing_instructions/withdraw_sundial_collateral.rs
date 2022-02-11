@@ -17,6 +17,7 @@ use anchor_spl::token::transfer;
 #[validates(check_sundial_profile_stale, check_sundial_profile_market)]
 #[derive(Accounts, Clone, CheckSundialProfileStale, CheckSundialProfileMarket)]
 #[instruction(amount: u64)]
+//Withdraw sundial collateral (port lp) token that you deposited before.
 pub struct WithdrawSundialCollateral<'info> {
     #[account(mut, has_one=user @ SundialError::InvalidProfileUser)]
     pub sundial_profile: Box<Account<'info, SundialProfile>>, //refreshed

@@ -17,6 +17,12 @@ use crate::error::SundialError;
 
 use solana_maths::{Decimal, TryDiv, U192};
 
+//Performing liquidations of sundial profile
+//Repay loan (liquidity token), withdraw collateral (port lp token)
+//Repay K liquidity tokens, get K*liquidityTokenPrice*(100+LiquidationPenalty)/100/collateralTokenPrice collateral tokens
+//You can only repay half of the total loan value, except for repaying overtime loan, you can repay all of the loan.
+//It would try to repay as much token as possible.
+//If there exists an overtime loan, you must liquidate the overtime loan first.
 #[validates(check_sundial_profile_stale)]
 #[derive(Accounts, Clone, CheckSundialProfileStale)]
 #[instruction()]
