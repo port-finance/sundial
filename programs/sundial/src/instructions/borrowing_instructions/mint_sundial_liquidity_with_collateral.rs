@@ -29,16 +29,44 @@ use vipers::{unwrap_int, unwrap_opt};
 )]
 #[instruction(amount:u64)]
 pub struct MintSundialLiquidityWithCollateral<'info> {
-    #[account(mut, has_one=user @ SundialError::InvalidProfileUser)]
+    #[account(
+        mut,
+        has_one=user @ SundialError::InvalidProfileUser
+    )]
     pub sundial_profile: Box<Account<'info, SundialProfile>>, //refreshed
-    #[account(has_one=token_program @ SundialError::InvalidTokenProgram)]
+    #[account(
+        has_one=token_program @ SundialError::InvalidTokenProgram
+    )]
     pub sundial: Account<'info, Sundial>,
-    #[account(seeds=[sundial.key().as_ref(), b"authority"], bump=sundial.bumps.authority_bump)]
+    #[account(
+        seeds = [
+            sundial.key().as_ref(),
+            b"authority"
+        ],
+        bump = sundial.bumps.authority_bump
+    )]
     pub sundial_authority: UncheckedAccount<'info>,
-    #[account(mut, seeds = [sundial.key().as_ref(), b"principle_mint"], bump = sundial.bumps.principle_mint_bump)]
+
+    #[account(
+        mut,
+        seeds = [
+            sundial.key().as_ref(),
+            b"principle_mint"
+        ],
+        bump = sundial.bumps.principle_mint_bump
+    )]
     pub sundial_principle_mint: Account<'info, Mint>,
-    #[account(mut, seeds = [sundial.key().as_ref(), b"fee_receiver"], bump = sundial.bumps.fee_receiver_bump)]
+
+    #[account(
+        mut,
+        seeds = [
+            sundial.key().as_ref(),
+            b"fee_receiver"
+        ],
+        bump = sundial.bumps.fee_receiver_bump
+    )]
     pub fee_receiver_wallet: Box<Account<'info, TokenAccount>>,
+
     #[account(mut)]
     pub user_principle_wallet: Account<'info, TokenAccount>,
     pub token_program: Program<'info, Token>,
@@ -110,6 +138,7 @@ pub fn process_mint_sundial_liquidity_with_collateral<'info>(
         SundialError::InvalidMintAmount,
         "Mint too much, you don't have enough borrowing power",
     )?;
+
     emit!(DidMintLoan {
         amount_mint: amount,
         user_wallet: ctx.accounts.user.key(),

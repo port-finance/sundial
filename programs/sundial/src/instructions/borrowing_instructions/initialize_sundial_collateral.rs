@@ -13,17 +13,57 @@ use crate::error::SundialError;
 
 #[validates(check_sundial_market_owner)]
 #[derive(Accounts, Clone, CheckSundialMarketOwner)]
-#[instruction(bumps: SundialCollateralBumps, config: SundialCollateralConfigParams, name:String, pda_bump:u8)]
+#[instruction(
+    bumps: SundialCollateralBumps,
+    config: SundialCollateralConfigParams,
+    name: String,
+    pda_bump: u8
+)]
 pub struct InitializeSundialCollateral<'info> {
-    #[account(init, payer=owner, seeds = [sundial_market.key().as_ref(), b"collateral", name.as_ref()], bump = pda_bump)]
+    #[account(
+        init,
+        payer = owner,
+        seeds = [
+            sundial_market.key().as_ref(),
+            name.as_ref(),
+            b"collateral"
+        ],
+        bump = pda_bump
+    )]
     pub sundial_collateral: Account<'info, SundialCollateral>,
-    #[account(seeds=[sundial_collateral.key().as_ref(), b"authority"], bump=bumps.authority_bump)]
-    pub sundial_collateral_authority: UncheckedAccount<'info>, //Authority of the sundial collateral pool, which is needed when transfer funds within users and the sundialCollateral's collateral wallet.
-    #[account(init, payer=owner, seeds = [sundial_collateral.key().as_ref(), b"lp"], bump = bumps.port_lp_bump, token::authority=sundial_collateral_authority, token::mint=port_lp_mint)]
-    pub sundial_collateral_lp_wallet: Box<Account<'info, TokenAccount>>, //Port Lp token Account
-    pub port_collateral_reserve: Box<Account<'info, PortReserve>>, //The reserve of the port lp token which is accepted in this sundial collateral pool
-    #[account(address = port_collateral_reserve.collateral.mint_pubkey)]
-    pub port_lp_mint: Box<Account<'info, Mint>>, //Mint of the port lp (collateral) token
+
+    #[account(
+        seeds = [
+            sundial_collateral.key().as_ref(),
+            b"authority"
+        ],
+        bump = bumps.authority_bump
+    )]
+    pub sundial_collateral_authority: UncheckedAccount<'info>,
+
+    /// Sundial Collateral controlled Port Lp token Account.
+    #[account(
+        init,
+        payer = owner,
+        seeds = [
+            sundial_collateral.key().as_ref(),
+            b"lp"
+        ],
+        bump = bumps.port_lp_bump,
+        token::authority=sundial_collateral_authority,
+        token::mint=port_lp_mint
+    )]
+    pub sundial_collateral_lp_wallet: Box<Account<'info, TokenAccount>>,
+
+    /// The underlying Port reserve.
+    pub port_collateral_reserve: Box<Account<'info, PortReserve>>,
+
+    /// Mint of the Port lp (collateral) token
+    #[account(
+        address = port_collateral_reserve.collateral.mint_pubkey
+    )]
+    pub port_lp_mint: Box<Account<'info, Mint>>,
+
     pub token_program: Program<'info, Token>,
     pub system_program: Program<'info, System>,
     pub rent: Sysvar<'info, Rent>,

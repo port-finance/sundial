@@ -10,12 +10,17 @@ use sundial_derives::*;
 #[validates()]
 #[derive(Accounts, Clone)]
 #[instruction()]
-//Refresh Sundial Collateral to update the collateral (port lp) token price
+/// Refresh Sundial Collateral to update the collateral (port lp) token price
 pub struct RefreshSundialCollateral<'info> {
-    #[account(mut, has_one = port_collateral_reserve @ SundialError::InvalidPortReserve)]
+    #[account(
+        mut,
+        has_one = port_collateral_reserve @ SundialError::InvalidPortReserve
+    )]
     pub sundial_collateral: Account<'info, SundialCollateral>,
+
     #[account(constraint = !port_collateral_reserve.last_update.stale @ SundialError::ReserveIsNotRefreshed)]
     pub port_collateral_reserve: Account<'info, PortReserve>,
+
     pub clock: Sysvar<'info, Clock>,
 }
 

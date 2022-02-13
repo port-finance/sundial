@@ -12,18 +12,30 @@ use anchor_spl::token::transfer;
 use crate::error::SundialError;
 use crate::state::SundialProfileCollateral;
 
-//Deposit port lp tokens as collateral into sundial profile to gain borrowing power.
-//Sundial profile should be created and inited.
+/// Deposit port lp tokens as collateral into sundial profile to gain borrowing power.
+/// [SundialProfile] should be created and initialized.
 #[validates(check_sundial_profile_market)]
 #[derive(Accounts, Clone, CheckSundialProfileMarket)]
 #[instruction(amount:u64)]
 pub struct DepositSundialCollateral<'info> {
-    #[account(mut, has_one=user @ SundialError::InvalidProfileUser)]
+    #[account(
+        mut,
+        has_one = user @ SundialError::InvalidProfileUser
+    )]
     pub sundial_profile: Box<Account<'info, SundialProfile>>,
-    #[account(has_one=token_program @ SundialError::InvalidTokenProgram)]
+
+    #[account(
+        has_one=token_program @ SundialError::InvalidTokenProgram
+    )]
     pub sundial_collateral: Account<'info, SundialCollateral>,
-    #[account(mut, seeds = [sundial_collateral.key().as_ref(), b"lp"], bump = sundial_collateral.bumps.port_lp_bump)]
+
+    #[account(
+        mut,
+        seeds = [sundial_collateral.key().as_ref(), b"lp"],
+        bump = sundial_collateral.bumps.port_lp_bump
+    )]
     pub sundial_collateral_port_lp_wallet: Account<'info, TokenAccount>,
+
     #[account(mut)]
     pub user_port_lp_wallet: Account<'info, TokenAccount>,
     pub token_program: Program<'info, Token>,

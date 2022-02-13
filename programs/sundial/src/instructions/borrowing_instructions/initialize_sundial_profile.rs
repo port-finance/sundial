@@ -2,13 +2,23 @@ use crate::state::SundialProfile;
 use anchor_lang::prelude::*;
 use sundial_derives::*;
 
-//Sundial market is given, the profile can only be used with the collateral and sundial in the same market
+/// Initialize [state::SundialProfile]
 #[validates()]
 #[derive(Accounts, Clone)]
 #[instruction(sundial_market: Pubkey, bump: u8)]
 pub struct InitializeSundialProfile<'info> {
-    #[account(init, payer=user, seeds=[sundial_market.as_ref(), user.key().as_ref(), b"profile"], bump=bump)]
+    #[account(
+        init,
+        payer = user,
+        seeds=[
+            sundial_market.as_ref(),
+            user.key().as_ref(),
+            b"profile"
+        ],
+        bump = bump
+    )]
     pub sundial_profile: Box<Account<'info, SundialProfile>>,
+
     #[account(mut)]
     pub user: Signer<'info>,
     pub system_program: Program<'info, System>,

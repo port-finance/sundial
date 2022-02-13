@@ -28,7 +28,7 @@ export class SundialCollateralWrapper extends SundialAccountWrapper {
     name: string,
     sundialMarket: PublicKey,
   ): Promise<[PublicKey, number]> {
-    const bumpBytes = [COLLATERAL, name].map(utils.bytes.utf8.encode);
+    const bumpBytes = [name, COLLATERAL].map(utils.bytes.utf8.encode);
     bumpBytes.unshift(sundialMarket.toBytes());
     return await PublicKey.findProgramAddress(
       bumpBytes,

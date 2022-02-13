@@ -17,12 +17,14 @@ use crate::error::SundialError;
 
 use solana_maths::{Decimal, TryDiv, U192};
 
-//Performing liquidations of sundial profile
-//Repay loan (liquidity token), withdraw collateral (port lp token)
-//Repay K liquidity tokens, get K*liquidityTokenPrice*(100+LiquidationPenalty)/100/collateralTokenPrice collateral tokens
-//You can only repay half of the total loan value, except for repaying overtime loan, you can repay all of the loan.
-//It would try to repay as much token as possible.
-//If there exists an overtime loan, you must liquidate the overtime loan first.
+/// Liquidate an unhealthy [state::SundialProfile].
+///
+/// Repay loan (liquidity token), withdraw collateral (port lp token)
+/// Repay `K` liquidity tokens, get `K * liquidityTokenPrice * (100+LiquidationPenalty)/100/collateralTokenPrice` collateral tokens.
+///
+/// You can only repay half of the total loan value, except for repaying overtime loan, you can repay all of the loan.
+/// It would try to repay as much token as possible.
+/// If there exists an overtime loan, you must liquidate the overtime loan first.
 #[validates(check_sundial_profile_stale)]
 #[derive(Accounts, Clone, CheckSundialProfileStale)]
 #[instruction()]
@@ -33,9 +35,18 @@ pub struct LiquidateSundialProfile<'info> {
     pub user_repay_liquidity_wallet: Account<'info, TokenAccount>,
     #[account(mut)]
     pub user_withdraw_collateral_wallet: Account<'info, TokenAccount>,
-    #[account(has_one=token_program @ SundialError::InvalidTokenProgram)]
+    #[account(
+        has_one = token_program @ SundialError::InvalidTokenProgram
+    )]
     pub sundial: Box<Account<'info, Sundial>>,
-    #[account(mut, seeds = [sundial.key().as_ref(), b"liquidity"], bump = sundial.bumps.port_liquidity_bump)]
+    #[account(
+        mut,
+        seeds = [
+            sundial.key().as_ref(),
+            b"liquidity"
+        ],
+        bump = sundial.bumps.port_liquidity_bump
+    )]
     pub sundial_liquidity_wallet: Account<'info, TokenAccount>,
     #[account(has_one=token_program @ SundialError::InvalidTokenProgram)]
     pub sundial_collateral: Box<Account<'info, SundialCollateral>>,
