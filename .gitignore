@@ -34,3 +34,4 @@ site/
 !.yarn/sdks
 !.yarn/versions
 .pnp.*
+migrations/deploy.ts

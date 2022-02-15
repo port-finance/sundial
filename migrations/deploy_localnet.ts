@@ -20,6 +20,9 @@ import {
   ReserveParser,
 } from '@port.finance/port-sdk';
 import { MockOraclesWrapper } from '@port.finance/mock-oracles';
+import { promises as fsPromises } from 'fs';
+
+const JSON_OUTPUT_FILE = 'env.localnet.json';
 
 module.exports = async function (provider: anchor.Provider) {
   anchor.setProvider(provider);
@@ -92,4 +95,16 @@ module.exports = async function (provider: anchor.Provider) {
       },
     });
   await createSundialCollateralTx.confirm();
+
+  const jsonLog = JSON.stringify({
+    provider: provider.wallet.publicKey.toString(),
+    walletPriv: [],
+    lendingMarket: lendingMarket.publicKey.toString(),
+    sundialMarket: sundialMarketBase.publicKey.toString(),
+    liquidityMint: mintPubkey.toString(),
+    reserveState: reserveState.address.toString(),
+    oraclePriv: Array.from(usdcOracleKP.secretKey)
+  });
+  await fsPromises.writeFile(JSON_OUTPUT_FILE, jsonLog);
+  console.log(`Environment info wrote to .anchor/${JSON_OUTPUT_FILE}`);
 };
