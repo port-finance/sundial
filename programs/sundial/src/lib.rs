@@ -88,6 +88,7 @@ pub mod sundial {
 
     #[process]
     fn liquidate_sundial_profile(ctx: Context<LiquidateSundialProfile>) {}
+
     #[process]
     fn initialize_sundial_profile(
         ctx: Context<InitializeSundialProfile>,
@@ -95,6 +96,7 @@ pub mod sundial {
         _bump: u8,
     ) {
     }
+
     #[process]
     fn refresh_sundial_collateral(ctx: Context<RefreshSundialCollateral>) {}
 

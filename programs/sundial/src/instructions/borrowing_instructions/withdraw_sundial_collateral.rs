@@ -14,19 +14,41 @@ use crate::event::*;
 use crate::helpers::create_transfer_cpi;
 use anchor_spl::token::transfer;
 
+/// Withdraw sundial collateral (port lp) token that you deposited before.
 #[validates(check_sundial_profile_stale, check_sundial_profile_market)]
 #[derive(Accounts, Clone, CheckSundialProfileStale, CheckSundialProfileMarket)]
 #[instruction(amount: u64)]
-//Withdraw sundial collateral (port lp) token that you deposited before.
 pub struct WithdrawSundialCollateral<'info> {
-    #[account(mut, has_one=user @ SundialError::InvalidProfileUser)]
+    #[account(
+        mut,
+        has_one=user @ SundialError::InvalidProfileUser
+    )]
     pub sundial_profile: Box<Account<'info, SundialProfile>>, //refreshed
-    #[account(has_one=token_program @ SundialError::InvalidTokenProgram)]
+
+    #[account(
+        has_one=token_program @ SundialError::InvalidTokenProgram
+    )]
     pub sundial_collateral: Account<'info, SundialCollateral>,
-    #[account(seeds=[sundial_collateral.key().as_ref(), b"authority"], bump=sundial_collateral.bumps.authority_bump)]
+
+    #[account(
+        seeds=[
+            sundial_collateral.key().as_ref(),
+            b"authority"
+        ],
+        bump = sundial_collateral.bumps.authority_bump
+    )]
     pub sundial_collateral_authority: UncheckedAccount<'info>,
-    #[account(mut, seeds = [sundial_collateral.key().as_ref(), b"lp"], bump = sundial_collateral.bumps.port_lp_bump)]
+
+    #[account(
+        mut,
+        seeds = [
+            sundial_collateral.key().as_ref(),
+            b"lp"
+        ],
+        bump = sundial_collateral.bumps.port_lp_bump
+    )]
     pub sundial_collateral_port_lp_wallet: Account<'info, TokenAccount>,
+
     #[account(mut)]
     pub user_port_lp_wallet: Account<'info, TokenAccount>,
     pub token_program: Program<'info, Token>,
@@ -34,18 +56,19 @@ pub struct WithdrawSundialCollateral<'info> {
     pub user: Signer<'info>,
 }
 
+// TODO: check this logics
 pub fn process_withdraw_sundial_collateral(
     ctx: Context<WithdrawSundialCollateral>,
     max_withdraw_amount: u64,
 ) -> ProgramResult {
-    let sundial_profile = &mut ctx.accounts.sundial_profile;
-    let sundial_collateral = ctx.accounts.sundial_collateral.key();
+    let profile = &mut ctx.accounts.sundial_profile;
+    let collateral = ctx.accounts.sundial_collateral.key();
 
     let (pos, collateral) = vipers::unwrap_opt!(
-        sundial_profile
+        profile
             .collaterals
             .iter_mut()
-            .find_position(|c| c.sundial_collateral == sundial_collateral),
+            .find_position(|c| c.sundial_collateral == collateral),
         "You don't have that asset as collateral"
     );
 
@@ -55,10 +78,10 @@ pub fn process_withdraw_sundial_collateral(
         SundialError::WithdrawTooMuchCollateral,
         "You are trying to withdraw more than you have"
     ) {
-        sundial_profile.collaterals.remove(pos);
+        profile.collaterals.remove(pos);
     }
 
-    sundial_profile.check_enough_borrowing_power(
+    profile.check_enough_borrowing_power(
         SundialError::WithdrawTooMuchCollateral,
         "Withdraw too much, you don't have enough borrowing power",
     )?;
@@ -81,5 +104,6 @@ pub fn process_withdraw_sundial_collateral(
         asset_mint: ctx.accounts.sundial_collateral.collateral_mint,
         user_wallet: ctx.accounts.user.key()
     });
+
     Ok(())
 }

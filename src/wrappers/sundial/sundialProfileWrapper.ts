@@ -130,7 +130,7 @@ export class SundialProfileWrapper extends SundialAccountWrapper {
     this.checkStateValid();
     const ix = this.program.instruction.refreshSundialProfile({
       accounts: {
-        sundialProfile: this.publicKey,
+        profile: this.publicKey,
         clock: SYSVAR_CLOCK_PUBKEY,
       },
     });
