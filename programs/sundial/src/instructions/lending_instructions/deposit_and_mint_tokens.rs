@@ -1,7 +1,6 @@
 use crate::helpers::*;
 use crate::instructions::*;
 
-use crate::event::*;
 use crate::helpers::create_mint_to_cpi;
 use crate::state::Sundial;
 use anchor_lang::prelude::*;
@@ -25,29 +24,76 @@ use sundial_derives::{validates, CheckSundialNotEnd};
 #[instruction(amount: u64)]
 pub struct DepositAndMintTokens<'info> {
     #[account(
-    constraint = sundial.reserve == port_accounts.reserve.key() @ SundialError::InvalidPortReserve,
-    constraint = sundial.token_program == token_program.key() @ SundialError::InvalidTokenProgram,
-    constraint = sundial.port_lending_program == port_accounts.port_lending_program.key() @ SundialError::InvalidPortLendingProgram)]
+        constraint = sundial.reserve == port_accounts.reserve.key() @ SundialError::InvalidPortReserve,
+        constraint = sundial.token_program == token_program.key() @ SundialError::InvalidTokenProgram,
+        constraint = sundial.port_lending_program == port_accounts.port_lending_program.key() @ SundialError::InvalidPortLendingProgram
+    )]
     pub sundial: Account<'info, Sundial>,
-    #[account(seeds=[sundial.key().as_ref(), b"authority"], bump=sundial.bumps.authority_bump)]
+
+    #[account(
+        seeds=[
+            sundial.key().as_ref(),
+            b"authority"
+        ],
+        bump = sundial.bumps.authority_bump
+    )]
     pub sundial_authority: UncheckedAccount<'info>,
-    #[account(mut, seeds = [sundial.key().as_ref(), b"lp"], bump = sundial.bumps.port_lp_bump)]
+
+    #[account(
+        mut,
+        seeds = [
+            sundial.key().as_ref(),
+            b"lp"
+        ],
+        bump = sundial.bumps.port_lp_bump
+    )]
     pub sundial_port_lp_wallet: Box<Account<'info, TokenAccount>>,
-    #[account(mut, seeds = [sundial.key().as_ref(), b"fee_receiver"], bump = sundial.bumps.fee_receiver_bump)]
+
+    #[account(
+        mut,
+        seeds = [
+            sundial.key().as_ref(),
+            b"fee_receiver"
+        ],
+        bump = sundial.bumps.fee_receiver_bump
+    )]
     pub sundial_fee_receiver_wallet: Box<Account<'info, TokenAccount>>,
-    #[account(mut, seeds = [sundial.key().as_ref(), b"principle_mint"], bump = sundial.bumps.principle_mint_bump)]
+
+    #[account(
+        mut,
+        seeds = [
+            sundial.key().as_ref(),
+            b"principle_mint"
+        ],
+        bump = sundial.bumps.principle_mint_bump
+    )]
     pub principle_token_mint: Box<Account<'info, Mint>>,
-    #[account(mut, seeds = [sundial.key().as_ref(), b"yield_mint"], bump = sundial.bumps.yield_mint_bump)]
+
+    #[account(
+        mut,
+        seeds = [
+            sundial.key().as_ref(),
+            b"yield_mint"
+        ],
+        bump = sundial.bumps.yield_mint_bump
+    )]
     pub yield_token_mint: Box<Account<'info, Mint>>,
+
     pub port_accounts: PortAccounts<'info>,
+
     #[account(mut)]
     pub user_liquidity_wallet: Box<Account<'info, TokenAccount>>,
+
     #[account(mut)]
     pub user_principle_token_wallet: Box<Account<'info, TokenAccount>>,
+
     #[account(mut)]
     pub user_yield_token_wallet: Box<Account<'info, TokenAccount>>,
+
     pub user_authority: Signer<'info>,
+
     pub token_program: Program<'info, Token>,
+
     pub clock: Sysvar<'info, Clock>,
 }
 
@@ -72,7 +118,9 @@ pub fn process_mint_principle_tokens_and_yield_tokens(
     ));
 
     log_then_prop_err!(ctx.accounts.sundial_port_lp_wallet.reload());
-    let principle_mint_amount = start_exchange_rate.collateral_to_liquidity(unwrap_int!(ctx
+
+    // We calculate how much liquidity is deposited if we deposit it at the very beginning of [Sundial].
+    let principal_token_amount = start_exchange_rate.collateral_to_liquidity(unwrap_int!(ctx
         .accounts
         .sundial_port_lp_wallet
         .amount
@@ -87,7 +135,7 @@ pub fn process_mint_principle_tokens_and_yield_tokens(
             ctx.accounts.sundial_authority.to_account_info(),
             seeds!(ctx, sundial, authority),
             ctx.accounts.token_program.to_account_info(),
-        ),
+        )
     ));
 
     log_then_prop_err!(mint_to(
@@ -98,7 +146,7 @@ pub fn process_mint_principle_tokens_and_yield_tokens(
             seeds!(ctx, sundial, authority),
             ctx.accounts.token_program.to_account_info(),
         ),
-        unwrap_int!(principle_mint_amount.checked_sub(fee_amount)),
+        unwrap_int!(principal_token_amount.checked_sub(fee_amount))
     ));
 
     log_then_prop_err!(mint_to(
@@ -109,16 +157,29 @@ pub fn process_mint_principle_tokens_and_yield_tokens(
             seeds!(ctx, sundial, authority),
             ctx.accounts.token_program.to_account_info(),
         ),
-        amount,
+        amount
     ));
 
     let liquidity_cap = &sundial.config.liquidity_cap;
 
     log_then_prop_err!(liquidity_cap.check_mint(&mut ctx.accounts.principle_token_mint));
-    emit!(DidDeposit {
+    emit!(DepositAndMintTokensEvent {
+        sundial: ctx.accounts.sundial.key(),
         liquidity_spent: amount,
-        principle_token_minted: principle_mint_amount,
+        principal_token_minted: principal_token_amount,
         yield_token_minted: amount
     });
     Ok(())
+}
+
+#[event]
+pub struct DepositAndMintTokensEvent {
+    #[index]
+    pub sundial: Pubkey,
+    /// The amount of liquidity deposited into Port
+    pub liquidity_spent: u64,
+    /// The amount of principal token minted
+    pub principal_token_minted: u64,
+    /// The amount of yield token minted
+    pub yield_token_minted: u64,
 }

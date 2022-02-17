@@ -1,5 +1,6 @@
 use crate::helpers::*;
 use crate::state::Sundial;
+use crate::state::SundialConfig;
 use crate::state::SundialMarket;
 use anchor_lang::prelude::*;
 
@@ -25,5 +26,19 @@ pub fn process_change_sundial_config(
     config: SundialInitConfigParams,
 ) -> ProgramResult {
     ctx.accounts.sundial.config = config.into();
+    emit!(ChangeSundialConfigEvent {
+        sundial: ctx.accounts.sundial.key(),
+        config: ctx.accounts.sundial.config.clone(),
+    });
     Ok(())
+}
+
+#[event]
+/// Event called in [sundial::change_sundial_config].
+pub struct ChangeSundialConfigEvent {
+    /// The [Sundial].
+    #[index]
+    pub sundial: Pubkey,
+    /// New [EigenParams].
+    pub config: SundialConfig,
 }

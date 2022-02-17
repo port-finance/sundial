@@ -35,38 +35,125 @@ impl From<SundialInitConfigParams> for SundialConfig {
 #[validates(check_sundial_market_owner)]
 #[derive(Accounts, Clone, CheckSundialMarketOwner)]
 #[instruction(
-bumps: SundialBumps, duration_in_seconds: i64,
-port_lending_program: Pubkey,
-config: SundialInitConfigParams, oracle: Pubkey,
-name:String, pda_bump:u8)]
+    bumps: SundialBumps,
+    duration_in_seconds: i64,
+    port_lending_program: Pubkey,
+    config: SundialInitConfigParams,
+    oracle: Pubkey,
+    name: String,
+    pda_bump: u8
+)]
 pub struct InitializeSundial<'info> {
-    #[account(init, payer=owner, seeds = [sundial_market.key().as_ref(), name.as_ref()], bump = pda_bump)]
+    #[account(
+        init,
+        payer = owner,
+        seeds = [
+            sundial_market.key().as_ref(),
+            name.as_ref()
+        ],
+        bump = pda_bump
+    )]
     pub sundial: Account<'info, Sundial>,
-    #[account(seeds=[sundial.key().as_ref(), b"authority"], bump=bumps.authority_bump)]
+
+    #[account(
+        seeds=[
+            sundial.key().as_ref(),
+            b"authority"
+        ],
+        bump = bumps.authority_bump
+    )]
     pub sundial_authority: UncheckedAccount<'info>,
-    #[account(init, payer=owner, seeds = [sundial.key().as_ref(), b"liquidity"], bump = bumps.port_liquidity_bump, token::authority=sundial_authority, token::mint=port_liquidity_mint)]
+
+    #[account(
+        init,
+        payer = owner,
+        seeds = [
+            sundial.key().as_ref(),
+            b"liquidity"
+        ],
+        bump = bumps.port_liquidity_bump,
+        token::authority = sundial_authority,
+        token::mint = port_liquidity_mint
+    )]
     pub sundial_port_liquidity_wallet: Box<Account<'info, TokenAccount>>,
-    #[account(init, payer=owner, seeds = [sundial.key().as_ref(), b"lp"], bump = bumps.port_lp_bump, token::authority=sundial_authority, token::mint=port_lp_mint)]
+
+    #[account(
+        init,
+        payer=owner,
+        seeds = [
+            sundial.key().as_ref(),
+            b"lp"
+        ],
+        bump = bumps.port_lp_bump,
+        token::authority = sundial_authority,
+        token::mint = port_lp_mint
+    )]
     pub sundial_port_lp_wallet: Box<Account<'info, TokenAccount>>,
-    #[account(init, payer=owner, seeds = [sundial.key().as_ref(), b"principle_mint"], bump = bumps.principle_mint_bump, mint::authority=sundial_authority, mint::decimals=port_liquidity_mint.decimals)]
+
+    #[account(
+        init,
+        payer = owner,
+        seeds = [
+            sundial.key().as_ref(),
+            b"principle_mint"
+        ],
+        bump = bumps.principle_mint_bump,
+        mint::authority = sundial_authority,
+        mint::decimals = port_liquidity_mint.decimals
+    )]
     pub principle_token_mint: Box<Account<'info, Mint>>,
-    #[account(init, payer=owner, seeds = [sundial.key().as_ref(), b"yield_mint"], bump = bumps.yield_mint_bump, mint::authority=sundial_authority, mint::decimals=port_liquidity_mint.decimals)]
+
+    #[account(
+        init,
+        payer = owner,
+        seeds = [
+            sundial.key().as_ref(),
+            b"yield_mint"
+        ],
+        bump = bumps.yield_mint_bump,
+        mint::authority = sundial_authority,
+        mint::decimals = port_liquidity_mint.decimals
+    )]
     pub yield_token_mint: Box<Account<'info, Mint>>,
-    #[account(init, payer=owner, seeds = [sundial.key().as_ref(), b"fee_receiver"], bump = bumps.fee_receiver_bump, token::authority=sundial_authority, token::mint=principle_token_mint)]
+
+    #[account(
+        init,
+        payer = owner,
+        seeds = [
+            sundial.key().as_ref(),
+            b"fee_receiver"
+        ],
+        bump = bumps.fee_receiver_bump,
+        token::authority = sundial_authority,
+        token::mint = principle_token_mint
+    )]
     pub fee_receiver_wallet: Box<Account<'info, TokenAccount>>,
-    #[account(owner=port_lending_program, constraint = !reserve.last_update.stale @ SundialError::ReserveIsNotRefreshed)]
+
+    #[account(
+        owner = port_lending_program,
+        constraint = !reserve.last_update.stale @ SundialError::ReserveIsNotRefreshed
+    )]
     pub reserve: Box<Account<'info, PortReserve>>,
+
     #[account(address = reserve.liquidity.mint_pubkey @ SundialError::InvalidPortLiquidityMint)]
     pub port_liquidity_mint: Box<Account<'info, Mint>>,
+
     #[account(address = reserve.collateral.mint_pubkey @ SundialError::InvalidPortLpMint)]
     pub port_lp_mint: Box<Account<'info, Mint>>,
+
     pub token_program: Program<'info, Token>,
     pub system_program: Program<'info, System>,
+
     #[account(mut)]
     pub owner: Signer<'info>,
+
     pub sundial_market: Box<Account<'info, SundialMarket>>,
+
     pub rent: Sysvar<'info, Rent>,
-    #[account(constraint = duration_in_seconds > 0 @ SundialError::EndTimeTooEarly)]
+
+    #[account(
+        constraint = duration_in_seconds > 0 @ SundialError::EndTimeTooEarly
+    )]
     pub clock: Sysvar<'info, Clock>,
 }
 
@@ -99,3 +186,5 @@ pub fn process_initialize_sundial(
     sundial.config.liquidity_decimals = ctx.accounts.port_liquidity_mint.decimals;
     Ok(())
 }
+
+// TODO: add event

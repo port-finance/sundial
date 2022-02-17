@@ -14,25 +14,42 @@ use crate::event::*;
 use crate::helpers::create_transfer_cpi;
 use anchor_spl::token::transfer;
 
+/// Repay sundial loan, repay liquidity token, i.e., repay USDC if you mint ppUSDC before.
+/// It will repay min(amount, loan_amount), e.g., you can pass u64::max to amount if you want repay all.
 #[validates(check_sundial_profile_market)]
 #[derive(Accounts, Clone, CheckSundialProfileMarket)]
 #[instruction(amount:u64)]
-//Repay sundial loan, repay liquidity token, i.e., repay USDC if you mint ppUSDC before.
-//It will repay min(amount, loan_amount), e.g., you can pass u64::max to amount if you want repay all.
 pub struct RepaySundialLiquidity<'info> {
-    #[account(mut, has_one=user @ SundialError::InvalidProfileUser)]
+    #[account(
+        mut,
+        has_one=user @ SundialError::InvalidProfileUser
+    )]
     pub sundial_profile: Box<Account<'info, SundialProfile>>,
-    #[account(has_one=token_program @ SundialError::InvalidTokenProgram)]
+
+    #[account(
+        has_one=token_program @ SundialError::InvalidTokenProgram
+    )]
     pub sundial: Account<'info, Sundial>,
-    #[account(mut, seeds = [sundial.key().as_ref(), b"liquidity"], bump = sundial.bumps.port_liquidity_bump)]
+
+    #[account(
+        mut,
+        seeds = [
+            sundial.key().as_ref(),
+            b"liquidity"
+        ],
+        bump = sundial.bumps.port_liquidity_bump
+    )]
     pub sundial_liquidity_wallet: Account<'info, TokenAccount>,
+
     #[account(mut)]
     pub user_liquidity_wallet: Account<'info, TokenAccount>,
+
     pub transfer_authority: Signer<'info>,
     pub user: Signer<'info>,
     pub token_program: Program<'info, Token>,
 }
 
+// TODO: check this logics
 pub fn process_repay_sundial_liquidity(
     ctx: Context<RepaySundialLiquidity>,
     max_repay_amount: u64,
@@ -73,5 +90,6 @@ pub fn process_repay_sundial_liquidity(
         asset_mint: ctx.accounts.sundial_liquidity_wallet.mint,
         user_wallet: ctx.accounts.user.key()
     });
+
     Ok(())
 }

@@ -20,16 +20,19 @@ pub fn check_sundial_not_end(input: TokenStream) -> TokenStream {
     (quote! {
         impl<'a> crate::helpers::CheckSundialNotEnd for #name<'a> {
              fn check_sundial_not_end(&self) -> ProgramResult {
-                vipers::invariant!(self.sundial.end_unix_time_stamp > self.clock.unix_timestamp, crate::error::SundialError::AlreadyEnd,
-                &format!(
-                "Sundial ends at {:?}, currrm rm ent time {:?}",
-                    self.sundial.end_unix_time_stamp, self.clock.unix_timestamp
-                ));
+                vipers::invariant!(
+                    self.sundial.end_unix_time_stamp > self.clock.unix_timestamp,
+                    crate::error::SundialError::AlreadyEnd,
+                    &format!(
+                        "Sundial ends at {:?}, current time is {:?}",
+                        self.sundial.end_unix_time_stamp, self.clock.unix_timestamp
+                    )
+                );
                 Ok(())
             }
         }
     })
-        .into()
+    .into()
 }
 
 #[proc_macro_derive(CheckSundialAlreadyEnd)]
@@ -40,12 +43,15 @@ pub fn check_sundial_already_end(input: TokenStream) -> TokenStream {
     (quote! {
         impl<'a> crate::helpers::CheckSundialAlreadyEnd for #name<'a> {
              fn check_sundial_already_end(&self) -> ProgramResult {
-                vipers::invariant!(self.sundial.end_unix_time_stamp <= self.clock.unix_timestamp, crate::error::SundialError::NotEndYet);
+                vipers::invariant!(
+                    self.sundial.end_unix_time_stamp <= self.clock.unix_timestamp,
+                    crate::error::SundialError::NotEndYet
+                );
                 Ok(())
             }
         }
     })
-        .into()
+    .into()
 }
 
 #[proc_macro_derive(CheckSundialProfileStale)]
@@ -55,11 +61,15 @@ pub fn check_sundial_profile_stale(input: TokenStream) -> TokenStream {
     (quote! {
         impl<'a> crate::helpers::CheckSundialProfileStale for #name<'a> {
              fn check_sundial_profile_stale(&self) -> ProgramResult {
-                self.sundial_profile.last_update.check_stale(&self.clock, crate::helpers::SUNDIAL_PROFILE_STALE_TOL, "Sundial Profile Is Stale")
+                self.sundial_profile.last_update.check_stale(
+                    &self.clock,
+                    crate::helpers::SUNDIAL_PROFILE_STALE_TOL,
+                    "Sundial Profile Is Stale"
+                )
              }
         }
     })
-        .into()
+    .into()
 }
 
 #[proc_macro_derive(CheckSundialMarketOwner)]
@@ -69,12 +79,17 @@ pub fn check_sundial_market_owner(input: TokenStream) -> TokenStream {
     (quote! {
         impl<'a> crate::helpers::CheckSundialMarketOwner for #name<'a> {
              fn check_sundial_market_owner(&self) -> ProgramResult {
-                vipers::assert_keys_eq!(self.sundial_market.owner, *self.owner.key, SundialError::InvalidOwner, "Invalid Sundial Market Owner");
+                vipers::assert_keys_eq!(
+                    self.sundial_market.owner,
+                    *self.owner.key,
+                    SundialError::InvalidOwner,
+                    "Invalid Sundial Market Owner"
+                );
                 Ok(())
             }
         }
     })
-        .into()
+    .into()
 }
 
 #[proc_macro_derive(CheckSundialProfileMarket)]
@@ -84,12 +99,16 @@ pub fn check_sundial_profile_market(input: TokenStream) -> TokenStream {
     let has_sundial = has_field(&ast.data, "sundial");
     let has_sundial_collateral = has_field(&ast.data, "sundial_collateral");
     if !has_sundial && !has_sundial_collateral {
-        panic!("Neither has sundial and sundial collateral")
+        panic!("Has neither sundial or sundial collateral")
     }
     let sundial_check = if has_sundial {
         quote! {
-            vipers::assert_keys_eq!(self.sundial.sundial_market,
-                self.sundial_profile.sundial_market, SundialError::SundialMarketNotMatch, "Sundial's market not matches the one on sundial profile");
+            vipers::assert_keys_eq!(
+                self.sundial.sundial_market,
+                self.sundial_profile.sundial_market,
+                SundialError::SundialMarketNotMatch,
+                "Sundial's market not matches the one on sundial profile"
+            );
         }
     } else {
         quote! {}
@@ -97,8 +116,12 @@ pub fn check_sundial_profile_market(input: TokenStream) -> TokenStream {
 
     let sundial_collateral_check = if has_sundial_collateral {
         quote! {
-            vipers::assert_keys_eq!(self.sundial_collateral.sundial_market,
-                self.sundial_profile.sundial_market, SundialError::SundialMarketNotMatch, "Sundial Collateral's market not matches the one on sundial profile");
+            vipers::assert_keys_eq!(
+                self.sundial_collateral.sundial_market,
+                self.sundial_profile.sundial_market,
+                SundialError::SundialMarketNotMatch,
+                "Sundial Collateral's market not matches the one on sundial profile"
+            );
         }
     } else {
         quote! {}
@@ -121,8 +144,7 @@ fn has_field(struct_input: &Data, field_name: &str) -> bool {
         if let Named(ref fields) = data.fields {
             for field in fields.named.iter() {
                 if let Some(ident) = field.ident.clone() {
-                    let ident_str = ident.to_string();
-                    if ident_str == field_name {
+                    if ident.to_string() == field_name {
                         return true;
                     }
                 }
@@ -138,22 +160,19 @@ pub fn check_sundial_owner(input: TokenStream) -> TokenStream {
     let name = &ast.ident;
     let has_sundial = has_field(&ast.data, "sundial");
     let has_sundial_collateral = has_field(&ast.data, "sundial_collateral");
+
     if !has_sundial && !has_sundial_collateral {
-        panic!("Neither has sundial and sundial collateral")
+        panic!("Has Neither sundial or sundial collateral")
     }
-    let check_owner = quote! {
-        vipers::assert_keys_eq!(self.sundial_market.owner, *self.owner.key,
-            SundialError::InvalidOwner, "Invalid Sundial Market Owner");
-        if !self.owner.is_signer {
-            msg!("Owner didn't sign");
-            return Err(SundialError::OwnerNotSigned.into());
-        }
-    };
 
     let sundial_check = if has_sundial {
         quote! {
-            vipers::assert_keys_eq!(self.sundial.sundial_market,
-                self.sundial_market.key(), SundialError::SundialMarketNotMatch, "Sundial's market not matches the one passed in");
+            vipers::assert_keys_eq!(
+                self.sundial.sundial_market,
+                self.sundial_market.key(),
+                SundialError::SundialMarketNotMatch,
+                "Sundial's market not matches the one passed in"
+            );
         }
     } else {
         quote! {}
@@ -161,11 +180,24 @@ pub fn check_sundial_owner(input: TokenStream) -> TokenStream {
 
     let sundial_collateral_check = if has_sundial_collateral {
         quote! {
-            vipers::assert_keys_eq!(self.sundial_collateral.sundial_market,
-                self.sundial_market.key(), SundialError::SundialMarketNotMatch, "Sundial Collateral's market not matches the one passed in");
+            vipers::assert_keys_eq!(
+                self.sundial_collateral.sundial_market,
+                self.sundial_market.key(),
+                SundialError::SundialMarketNotMatch,
+                "Sundial Collateral's market not matches the one passed in"
+            );
         }
     } else {
         quote! {}
+    };
+
+    let check_owner = quote! {
+        vipers::assert_keys_eq!(self.sundial_market.owner, *self.owner.key,
+            SundialError::InvalidOwner, "Invalid Sundial Market Owner");
+        if !self.owner.is_signer {
+            msg!("Owner didn't sign");
+            return Err(SundialError::OwnerNotSigned.into());
+        }
     };
 
     (quote! {
