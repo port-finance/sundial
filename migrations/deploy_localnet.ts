@@ -11,8 +11,8 @@ import * as anchor from '@project-serum/anchor';
 import { createDefaultReserve, createLendingMarket } from '../tests/utils';
 import { SolanaProvider } from '@saberhq/solana-contrib';
 import { SundialSDK } from '../src';
-import { Keypair } from '@solana/web3.js';
-import { BN } from '@project-serum/anchor';
+import { Keypair, PublicKey } from '@solana/web3.js';
+import { BN, utils } from '@project-serum/anchor';
 import { MAX_U64 } from '@saberhq/token-utils';
 import {
   ParsedAccount,
@@ -96,12 +96,19 @@ module.exports = async function (provider: anchor.Provider) {
     });
   await createSundialCollateralTx.confirm();
 
+  const [principalMint] = await PublicKey.findProgramAddress(
+    [sundialMarketBase.publicKey.toBuffer(), utils.bytes.utf8.encode('principle_mint')],
+    sundialSDK.programs.Sundial.programId,
+  );
+  console.log('principalMint', principalMint.toString());
+
   const jsonLog = JSON.stringify({
     provider: provider.wallet.publicKey.toString(),
     walletPriv: [],
     lendingMarket: lendingMarket.publicKey.toString(),
     sundialMarket: sundialMarketBase.publicKey.toString(),
     liquidityMint: mintPubkey.toString(),
+    principalMint: principalMint.toString(),
     reserveState: reserveState.address.toString(),
     oraclePriv: Array.from(usdcOracleKP.secretKey)
   });
