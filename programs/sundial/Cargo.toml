@@ -1,0 +1,32 @@
+[package]
+name = "sundial"
+version = "0.1.0"
+description = "Sundial helps to bring fixed rate borrowing and lending to Solana"
+edition = "2021"
+homepage = "https://port.finance"
+repository = "https://github.com/port-finance/sundial"
+authors = ["Port Finance Team <hello@port.finance>"]
+license = "AGPL-3.0"
+keywords = ["solana", "anchor", "defi", "port"]
+
+[lib]
+crate-type = ["cdylib", "lib"]
+name = "sundial"
+
+[features]
+no-entrypoint = []
+no-idl = []
+cpi = ["no-entrypoint"]
+default = []
+
+[dependencies]
+anchor-lang = "0.19.0"
+anchor-spl = "0.19.0"
+port-anchor-adaptor = "0.2.8"
+solana-maths = "0.1.1"
+port-variable-rate-lending-instructions = "0.3.0"
+paste = "1.0.6"
+vipers = "1.5.5"
+pyth-client = "0.2.2"
+itertools = "0.10.1"
+sundial-derives = {path = "../../sundial-derives"}

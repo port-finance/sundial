@@ -1,0 +1,19 @@
+[package]
+name = "sundial-derives"
+version = "0.1.0"
+edition = "2021"
+description = "Helper macro for sundial."
+homepage = "https://port.finance"
+repository = "https://github.com/port-finance/sundial"
+authors = ["Port Finance Team <hello@port.finance>"]
+license = "AGPL-3.0"
+keywords = ["solana", "anchor", "defi", "port"]
+
+# See more keys and their definitions at https://doc.rust-lang.org/cargo/reference/manifest.html
+[lib]
+proc-macro = true
+[dependencies]
+syn = {version = "1.0.82", features = ["full"]}
+quote = "1.0.10"
+
+proc-macro2 = "1.0.32"

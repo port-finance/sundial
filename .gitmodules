@@ -1,0 +1,4 @@
+
+[submodule "deps/mock-oracles"]
+	path = deps/mock-oracles
+	url = https://github.com/port-finance/mock-oracles.git

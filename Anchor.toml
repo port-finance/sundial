@@ -1,0 +1,29 @@
+[registry]
+url = "https://anchor.projectserum.com"
+
+[provider]
+cluster = "localnet"
+wallet = "~/.config/solana/id.json"
+
+[[test.genesis]]
+address = "Port7uDYB3wk6GJAw4KT1WpTeMtSu9bTcChBHkX2LfR"
+program = "./deps/port_finance_variable_rate_lending.so"
+
+[[test.genesis]]
+address = "FsJ3A3u2vn5cTVofAjvy6y5kwABJAqYWpe4975bi2epH"
+program = "./deps/mock-oracles/target/deploy/mock_oracles.so"
+
+[programs.localnet]
+sundial = "SDLxV7m1qmoqkytqYRGY1x438AbYCqekPsPxK4kvwuk"
+
+[programs.devnet]
+sundial = "SDLxV7m1qmoqkytqYRGY1x438AbYCqekPsPxK4kvwuk"
+
+[programs.testnet]
+sundial = "SDLxV7m1qmoqkytqYRGY1x438AbYCqekPsPxK4kvwuk"
+
+[programs.mainnet]
+sundial = "SDLxV7m1qmoqkytqYRGY1x438AbYCqekPsPxK4kvwuk"
+
+[scripts]
+test = "ts-mocha -p ./tsconfig.json -t 1000000 tests/**/*.ts"
