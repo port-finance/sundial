@@ -11,7 +11,7 @@ program = "./deps/port_finance_variable_rate_lending.so"
 
 [[test.genesis]]
 address = "FsJ3A3u2vn5cTVofAjvy6y5kwABJAqYWpe4975bi2epH"
-program = "./deps/mock-oracles/target/deploy/mock_oracles.so"
+program = "./deps/mock_oracles.so"
 
 [programs.localnet]
 sundial = "SDLxV7m1qmoqkytqYRGY1x438AbYCqekPsPxK4kvwuk"
