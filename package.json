@@ -43,7 +43,7 @@
   "devDependencies": {
     "@saberhq/solana-contrib": "^1.10.4",
     "@saberhq/token-utils": "^1.10.4",
-    "@solana/spl-token": "^0.1.8",
+    "@solana/spl-token": "^0.2.0",
     "@types/mocha": "^9.0.0",
     "@typescript-eslint/eslint-plugin": "^5.3.1",
     "@typescript-eslint/parser": "^5.3.1",
