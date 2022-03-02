@@ -22,7 +22,7 @@ default = []
 [dependencies]
 anchor-lang = "0.19.0"
 anchor-spl = "0.19.0"
-port-anchor-adaptor = "0.2.8"
+port-anchor-adaptor = "0.3.2"
 solana-maths = "0.1.1"
 port-variable-rate-lending-instructions = "0.3.0"
 paste = "1.0.6"
