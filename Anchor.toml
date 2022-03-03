@@ -1,3 +1,9 @@
+[workspace]
+members = [
+    "programs/sundial",
+    "sundial-derives"
+]
+
 [registry]
 url = "https://anchor.projectserum.com"
 
