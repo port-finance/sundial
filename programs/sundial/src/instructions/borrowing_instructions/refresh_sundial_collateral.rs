@@ -31,7 +31,7 @@ pub fn process_refresh_sundial_collateral(ctx: Context<RefreshSundialCollateral>
     let exchange_rate = log_then_prop_err!(reserve.collateral_exchange_rate());
 
     let collateral_price =
-        log_then_prop_err!(exchange_rate.decimal_liquidity_to_collateral(liquidity_price));
+        log_then_prop_err!(exchange_rate.decimal_collateral_to_liquidity(liquidity_price));
 
     // TODO: why we do the division here? I think it's better to divide later so more precision is preserved?
     sundial_collateral.collateral_price =
