@@ -1,3 +1,5 @@
+anchor_version = "0.19.0"
+
 [workspace]
 members = [
     "programs/sundial",
