@@ -89,7 +89,7 @@ macro_rules! log_then_prop_err {
 }
 
 pub fn get_pyth_oracle_price(oracle: &AccountInfo, clock: &Clock) -> Result<Decimal, ProgramError> {
-    const STALE_AFTER_SLOTS_ELAPSED: u64 = 10;
+    const STALE_AFTER_SLOTS_ELAPSED: u64 = 10000;
 
     let pyth_data = oracle.try_borrow_data()?;
     let pyth_price = cast::<Price>(&pyth_data);

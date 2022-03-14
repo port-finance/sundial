@@ -21,6 +21,7 @@ import {
 } from '@port.finance/port-sdk';
 import { MockOraclesWrapper } from '@port.finance/mock-oracles';
 import { promises as fsPromises } from 'fs';
+import { SUNDIAL_ADDRESSES } from '../dist/cjs';
 
 const JSON_OUTPUT_FILE = 'env.localnet.json';
 
@@ -96,8 +97,12 @@ module.exports = async function (provider: anchor.Provider) {
     });
   await createSundialCollateralTx.confirm();
 
+  const [sundialId] =  await PublicKey.findProgramAddress(
+    [sundialMarketBase.publicKey.toBytes(), utils.bytes.utf8.encode('USDC')],
+    SUNDIAL_ADDRESSES.Sundial,
+  );
   const [principalMint] = await PublicKey.findProgramAddress(
-    [sundialMarketBase.publicKey.toBuffer(), utils.bytes.utf8.encode('principle_mint')],
+    [sundialId.toBuffer(), utils.bytes.utf8.encode('principle_mint')],
     sundialSDK.programs.Sundial.programId,
   );
   console.log('principalMint', principalMint.toString());
