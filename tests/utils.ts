@@ -271,8 +271,9 @@ export const createAccount = async (
   provider: Provider,
   space: number,
   owner: PublicKey,
+  account?: Keypair,
 ): Promise<Keypair> => {
-  const newAccount = Keypair.generate();
+  const newAccount = account ?? Keypair.generate();
   const createTx = new Transaction().add(
     SystemProgram.createAccount({
       fromPubkey: provider.wallet.publicKey,
@@ -290,11 +291,13 @@ export const createAccount = async (
 
 export async function createLendingMarket(
   provider: Provider,
+  marketAccount?: Keypair,
 ): Promise<Keypair> {
   const lendingMarket = await createAccount(
     provider,
     LENDING_MARKET_LEN,
     PORT_LENDING,
+    marketAccount
   );
   await provider.send(
     (() => {
