@@ -564,12 +564,6 @@ dependencies = [
 ]
 
 [[package]]
-name = "hex"
-version = "0.4.3"
-source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "7f24254aa9a54b5c858eaee2f5bccdb46aaf0e486a595ed5fd8f86ba55232a70"
-
-[[package]]
 name = "hmac"
 version = "0.8.1"
 source = "registry+https://github.com/rust-lang/crates.io-index"
@@ -835,7 +829,7 @@ dependencies = [
  "solana-program",
  "spl-token",
  "thiserror",
- "uint 0.8.5",
+ "uint",
 ]
 
 [[package]]
@@ -852,7 +846,7 @@ dependencies = [
  "solana-program",
  "spl-token",
  "thiserror",
- "uint 0.8.5",
+ "uint",
 ]
 
 [[package]]
@@ -870,7 +864,7 @@ dependencies = [
  "solana-program",
  "spl-token",
  "thiserror",
- "uint 0.8.5",
+ "uint",
 ]
 
 [[package]]
@@ -1157,16 +1151,16 @@ dependencies = [
 
 [[package]]
 name = "solana-maths"
-version = "0.1.1"
+version = "0.1.2"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "a838196ed0bd1167442a6364b917aa3f49c39c69e36bb504e186d493d98ee715"
+checksum = "1a5a56a07f42e0619414cda078b3f838d8df98ec2a4ed145d03c3b2a554556a7"
 dependencies = [
  "arrayref",
  "num-derive",
  "num-traits",
  "solana-program",
  "thiserror",
- "uint 0.9.1",
+ "uint",
 ]
 
 [[package]]
@@ -1350,18 +1344,6 @@ dependencies = [
  "byteorder",
  "crunchy",
  "rustc-hex",
- "static_assertions",
-]
-
-[[package]]
-name = "uint"
-version = "0.9.1"
-source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "6470ab50f482bde894a037a57064480a246dbfdd5960bd65a44824693f08da5f"
-dependencies = [
- "byteorder",
- "crunchy",
- "hex",
  "static_assertions",
 ]
 
