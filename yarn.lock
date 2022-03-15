@@ -215,45 +215,38 @@
     assert "^2.0.0"
     buffer "^6.0.1"
 
-"@saberhq/anchor-contrib@^1.10.4":
-  version "1.11.3"
-  resolved "https://registry.yarnpkg.com/@saberhq/anchor-contrib/-/anchor-contrib-1.11.3.tgz#f42683d429ce61e1a75aeeafdd4fe40fa5d7aea6"
-  integrity sha512-DYcsEsDkZr05m0yO4Vz7/TnPYlj8GDHz59BnJWnWQjQ2x4I7hrapLv1upAXVQqCRGwwPYNnFFkyUK2kGevjVag==
+"@saberhq/anchor-contrib@^1.10.4", "@saberhq/anchor-contrib@^1.12.20", "@saberhq/anchor-contrib@^1.12.52":
+  version "1.12.52"
+  resolved "https://registry.yarnpkg.com/@saberhq/anchor-contrib/-/anchor-contrib-1.12.52.tgz#ea8ee2e3a958548dcf2f27a39e6cbe554b5d2a5f"
+  integrity sha512-oknafAcP0rgL2elrRJaqCjvotmYXiVAS931938jSk2a2DvYC2fb/FWzkJgrHAkptE5QsDZHWgaQNIQ5D6Xb9Hw==
   dependencies:
-    "@saberhq/solana-contrib" "^1.11.3"
-    eventemitter3 "^4.0.7"
-    lodash.camelcase "^4.3.0"
-    lodash.mapvalues "^4.6.0"
-    tslib "^2.3.1"
-
-"@saberhq/anchor-contrib@^1.12.20":
-  version "1.12.35"
-  resolved "https://registry.yarnpkg.com/@saberhq/anchor-contrib/-/anchor-contrib-1.12.35.tgz#40624b4000cb3aa68c0a92ee81837ee0b431f771"
-  integrity sha512-Wls++r8eewjUi45FGLdU7Fqpx6TXTY3L3ceyFKk9YcyxtWm7bY7MaauH7ljyal3aVVpxq+BIAvL7UC5KXEjUeg==
-  dependencies:
-    "@saberhq/solana-contrib" "^1.12.35"
+    "@saberhq/solana-contrib" "^1.12.52"
     eventemitter3 "^4.0.7"
     lodash.camelcase "^4.3.0"
     lodash.mapvalues "^4.6.0"
     tslib "^2.3.1"
 
 "@saberhq/chai-solana@^1.10.4":
-  version "1.11.3"
-  resolved "https://registry.yarnpkg.com/@saberhq/chai-solana/-/chai-solana-1.11.3.tgz#1cb1429d2f66d70615e59442e99fab83fe22ba3f"
-  integrity sha512-nqDtHConadGw7z32nhv2ZqjK0fewlr1Ua5/W6Zu/WkS2IIosPZDTPY8UiJ7dFxpYn9Q6Wfvw7/E4VPkKfW8oSw==
+  version "1.12.52"
+  resolved "https://registry.yarnpkg.com/@saberhq/chai-solana/-/chai-solana-1.12.52.tgz#f610e4ceca8550afb4ff8f7eeeb6d1a360077e9b"
+  integrity sha512-HjNwpbgyVcroPQBLXIme+czXRibTDnWCzYQK9HgyWR2inbvD/2ewAdA2AMwQgbTCf5WcJSkJk/RttDaVsmz49w==
   dependencies:
+    "@saberhq/anchor-contrib" "^1.12.52"
+    "@saberhq/solana-contrib" "^1.12.52"
+    "@saberhq/token-utils" "^1.12.52"
     "@types/chai" "^4.3.0"
-    "@types/chai-as-promised" "^7.1.4"
+    "@types/chai-as-promised" "^7.1.5"
     "@types/promise-retry" "^1.1.3"
-    chai "^4.3.4"
+    chai "=4.3.4"
     chai-as-promised "^7.1.1"
-    chai-bn "^0.3.0"
+    chai-bn "^0.3.1"
+    colors "^1.4.0"
     tslib "^2.3.1"
 
-"@saberhq/solana-contrib@^1.10.4", "@saberhq/solana-contrib@^1.11.3":
-  version "1.11.3"
-  resolved "https://registry.yarnpkg.com/@saberhq/solana-contrib/-/solana-contrib-1.11.3.tgz#40d4fc64e728dc3135e1df555e78881b6f6428a2"
-  integrity sha512-crh3GdPk9yY3ieWQfFOGh1SIoW6mGvCcyKu4XDGT3hfSXKpYY+1XNVIKVgpHc+gIoscZZKOeHIw8elDCm9qkeg==
+"@saberhq/solana-contrib@^1.10.4", "@saberhq/solana-contrib@^1.12.35", "@saberhq/solana-contrib@^1.12.52":
+  version "1.12.52"
+  resolved "https://registry.yarnpkg.com/@saberhq/solana-contrib/-/solana-contrib-1.12.52.tgz#dd5f388456434c0aba6a0438f5c2073bf2c9991e"
+  integrity sha512-znTUlEHfgmyPS/Sm3xk61CLLaN7lDQ62zmASHBZe9ScJZa9JAQfNPajTM2secpmAR9fe5cbwUX8v+RlLWh4ifQ==
   dependencies:
     "@types/promise-retry" "^1.1.3"
     "@types/retry" "^0.12.1"
@@ -262,51 +255,15 @@
     tiny-invariant "^1.2.0"
     tslib "^2.3.1"
 
-"@saberhq/solana-contrib@^1.12.35":
-  version "1.12.35"
-  resolved "https://registry.yarnpkg.com/@saberhq/solana-contrib/-/solana-contrib-1.12.35.tgz#55d005a84af1be71fd8b957fde113df8156d0b9d"
-  integrity sha512-KHhjGBkeaLCv27VaRv0EEWRF5jY/4M5qHsm1qBcZHLXPQH6XeY7k7NEswILqY5S0yZZ7f1gsZ9Hqn/ZZRZJpZg==
+"@saberhq/token-utils@^1.10.4", "@saberhq/token-utils@^1.12.35", "@saberhq/token-utils@^1.12.52":
+  version "1.12.52"
+  resolved "https://registry.yarnpkg.com/@saberhq/token-utils/-/token-utils-1.12.52.tgz#243a909aa8205c3c20708c11f9780c516dcd3d79"
+  integrity sha512-xQpFl8Ym4dIB2Ci9/Xpsr4wFSRy6SEB3v94hhuobBzyMEE0c1ndsPuQLC8utLYTPEigwuqmaAkUnDwSAj8S29Q==
   dependencies:
-    "@types/promise-retry" "^1.1.3"
-    "@types/retry" "^0.12.1"
-    promise-retry "^2.0.1"
-    retry "^0.13.1"
-    tiny-invariant "^1.2.0"
-    tslib "^2.3.1"
-
-"@saberhq/solana-contrib@^1.12.36":
-  version "1.12.36"
-  resolved "https://registry.yarnpkg.com/@saberhq/solana-contrib/-/solana-contrib-1.12.36.tgz#f1ed60a89997e3a070c8e040f985e989fb9d0be7"
-  integrity sha512-D4eq3m7SHEwKo7Kw2l7ytHj/2x/mR806vWo6ifbY7sQhRaWp3VDWJauljllzXzdZG1fgjkELlLvoswoY5AzBEg==
-  dependencies:
-    "@types/promise-retry" "^1.1.3"
-    "@types/retry" "^0.12.1"
-    promise-retry "^2.0.1"
-    retry "^0.13.1"
-    tiny-invariant "^1.2.0"
-    tslib "^2.3.1"
-
-"@saberhq/token-utils@^1.10.4":
-  version "1.11.3"
-  resolved "https://registry.yarnpkg.com/@saberhq/token-utils/-/token-utils-1.11.3.tgz#b6b283f0ee3aae5db7cf1df67724e4218ca1ff81"
-  integrity sha512-/GRnNQlm0GYKJOZxrNwWxWAak+bDtyFEMlWVO/oloPKjjAW037IPPoxl+O0AWYOShEy7JooEDsg1nnbzAa6hYQ==
-  dependencies:
-    "@saberhq/solana-contrib" "^1.11.3"
+    "@saberhq/solana-contrib" "^1.12.52"
     "@solana/buffer-layout" "^4.0.0"
     "@solana/spl-token" "^0.1.8"
-    "@ubeswap/token-math" "^4.4.1"
-    tiny-invariant "^1.2.0"
-    tslib "^2.3.1"
-
-"@saberhq/token-utils@^1.12.35":
-  version "1.12.36"
-  resolved "https://registry.yarnpkg.com/@saberhq/token-utils/-/token-utils-1.12.36.tgz#5d65792e36879e0560fc2e8242ae83fb843a5144"
-  integrity sha512-VXK+Sy0Hn9eKW5frKq/bWvKM1nKSG/cy8kh7UHFZ3LoIFgFPcyjikvVKVQo7ozTldz+lm2Oa/bYhn33IFmE1sQ==
-  dependencies:
-    "@saberhq/solana-contrib" "^1.12.36"
-    "@solana/buffer-layout" "^4.0.0"
-    "@solana/spl-token" "^0.1.8"
-    "@ubeswap/token-math" "^4.4.1"
+    "@ubeswap/token-math" "^4.4.4"
     tiny-invariant "^1.2.0"
     tslib "^2.3.1"
 
@@ -395,10 +352,10 @@
   dependencies:
     "@types/node" "*"
 
-"@types/chai-as-promised@^7.1.4":
-  version "7.1.4"
-  resolved "https://registry.yarnpkg.com/@types/chai-as-promised/-/chai-as-promised-7.1.4.tgz#caf64e76fb056b8c8ced4b761ed499272b737601"
-  integrity sha512-1y3L1cHePcIm5vXkh1DSGf/zQq5n5xDKG1fpCvf18+uOkpce0Z1ozNFPkyWsVswK7ntN1sZBw3oU6gmN+pDUcA==
+"@types/chai-as-promised@^7.1.5":
+  version "7.1.5"
+  resolved "https://registry.yarnpkg.com/@types/chai-as-promised/-/chai-as-promised-7.1.5.tgz#6e016811f6c7a64f2eed823191c3a6955094e255"
+  integrity sha512-jStwss93SITGBwt/niYrkf2C+/1KTeZCZl1LaeezTlqppAKeoQC7jxyqYuP72sxBGKCIbw7oHgbYssIRzT5FCQ==
   dependencies:
     "@types/chai" "*"
 
@@ -603,10 +560,10 @@
     "@typescript-eslint/types" "5.8.0"
     eslint-visitor-keys "^3.0.0"
 
-"@ubeswap/token-math@^4.4.1":
-  version "4.4.1"
-  resolved "https://registry.yarnpkg.com/@ubeswap/token-math/-/token-math-4.4.1.tgz#bb1aa0547691aed6c14d1a80db4538b6e74a502e"
-  integrity sha512-856auygzQ8chxOt2dNGk5Tp/TWl8Fgs2U6pTHkclFn8RcV7htpd/DaTYDCITQneLTAIfAkm1UopIkwHDaMMx4g==
+"@ubeswap/token-math@^4.4.4":
+  version "4.4.4"
+  resolved "https://registry.yarnpkg.com/@ubeswap/token-math/-/token-math-4.4.4.tgz#98ff131a4371a6229245d8aa79bf198a35682b9c"
+  integrity sha512-AbcyDhKVPaFQOuzak1UPyBPNbo6IHCKY4C2xq5DOcW6qmlI+4EaxI9mU2jpG/joYAtqPYrx2BbLizU+TfB6bmg==
   dependencies:
     big.js "^6.1.1"
     decimal.js-light "^2.5.1"
@@ -904,12 +861,12 @@ chai-as-promised@^7.1.1:
   dependencies:
     check-error "^1.0.2"
 
-chai-bn@^0.3.0:
-  version "0.3.0"
-  resolved "https://registry.yarnpkg.com/chai-bn/-/chai-bn-0.3.0.tgz#6310314dbb49590a8ec50b3fe12b6670141c120e"
-  integrity sha512-WsDnkmgcXUZVHarkENCA2DhGUs8M6zl6M6XxHrDTIq0DH4ZNDgHN63v7JJnNOQ+LVI/YwSob8eDwqDRW7cp3XQ==
+chai-bn@^0.3.1:
+  version "0.3.1"
+  resolved "https://registry.yarnpkg.com/chai-bn/-/chai-bn-0.3.1.tgz#677cd3c0b58bae83ffe51604a811d0b3c6f41544"
+  integrity sha512-vuzEy0Cb+k8zqi2SHOmvZdRSbKcSOJfS1Nv8+6YDJIyCzfxkTCHLNRyjRIoRJ3WJtYb/c7OHjrvLoGeyO4A/gA==
 
-chai@^4.3.4:
+chai@=4.3.4, chai@^4.3.4:
   version "4.3.4"
   resolved "https://registry.yarnpkg.com/chai/-/chai-4.3.4.tgz#b55e655b31e1eac7099be4c08c21964fce2e6c49"
   integrity sha512-yS5H68VYOCtN1cjfwumDSuzn/9c+yza4f3reKXlE5rUg7SFcCEy90gJvydNgOYtblyf4Zi6jIWRnXOgErta0KA==
@@ -1007,6 +964,11 @@ colorette@^2.0.16:
   version "2.0.16"
   resolved "https://registry.yarnpkg.com/colorette/-/colorette-2.0.16.tgz#713b9af84fdb000139f04546bd4a93f62a5085da"
   integrity sha512-hUewv7oMjCp+wkBv5Rm0v87eJhq4woh5rSR+42YSQJKecCqgIqNkZ6lAlQms/BwHPJA5NKMRlpxPRv0n8HQW6g==
+
+colors@^1.4.0:
+  version "1.4.0"
+  resolved "https://registry.yarnpkg.com/colors/-/colors-1.4.0.tgz#c50491479d4c1bdaed2c9ced32cf7c7dc2360f78"
+  integrity sha512-a+UqTh4kgZg/SlGvfbzDHpgRu7AAQOmmqRHJnxhRZICKFUT91brVhNNt58CMWU9PsBbv3PDCZUHbVxuDiH2mtA==
 
 commander@^2.20.3:
   version "2.20.3"
