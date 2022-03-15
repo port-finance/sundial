@@ -922,9 +922,18 @@ dependencies = [
 
 [[package]]
 name = "pyth-client"
-version = "0.2.2"
+version = "0.4.0"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "44de48029c54ec1ca570786b5baeb906b0fc2409c8e0145585e287ee7a526c72"
+checksum = "b1843176acbb191bc007988abde5b71b97d02dcb85e88db112b612ccdda2c13b"
+dependencies = [
+ "borsh",
+ "borsh-derive",
+ "bytemuck",
+ "num-derive",
+ "num-traits",
+ "solana-program",
+ "thiserror",
+]
 
 [[package]]
 name = "quote"
