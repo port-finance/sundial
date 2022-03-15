@@ -1299,7 +1299,6 @@ describe('SundialCollateral', () => {
       );
     };
 
-    //Mint (MintAmount-1)
     await refreshThenMint(
       mintAmount.subn(1),
       sundialUSDCWrapper,
@@ -1307,19 +1306,16 @@ describe('SundialCollateral', () => {
       [sundialSolCollateralWrapper, parsedSolReserve],
     );
 
-    //Liquidate should fail
     await expectTX(
       await updatePriceAndPrepareLiquidation(),
       'liquidate should failed since profile is healthy',
     ).to.be.rejected;
 
-    //Recover the price for minting one more
     await mockOraclesWrapper.writePythPrice(usdcOracleKP, {
       price: USDC_PRICE,
       slot: new BN(await provider.connection.getSlot()),
     });
 
-    //Mint one more
     await refreshThenMint(
       new BN(1),
       sundialUSDCWrapper,

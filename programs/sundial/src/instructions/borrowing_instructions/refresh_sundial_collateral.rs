@@ -30,14 +30,13 @@ pub fn process_refresh_sundial_collateral(ctx: Context<RefreshSundialCollateral>
     let liquidity_price = reserve.liquidity.market_price;
     let exchange_rate = log_then_prop_err!(reserve.collateral_exchange_rate());
 
-    // TODO: check that this is correct, shouldn't this be `decimal_liquidity_to_collateral`?
     let collateral_price =
         log_then_prop_err!(exchange_rate.decimal_collateral_to_liquidity(liquidity_price));
 
     // TODO: why we do the division here? I think it's better to divide later so more precision is preserved?
     sundial_collateral.collateral_price =
         get_raw_from_uint!(log_then_prop_err!(price_per_lamport(
-            // TODO: why do we write it like this? Isn't this the same as just writing `collateral_price`?
+            // Fixed type mismatch here.
             Decimal(U192(get_raw_from_uint!(collateral_price))),
             sundial_collateral
                 .sundial_collateral_config
