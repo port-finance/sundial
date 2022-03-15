@@ -13,6 +13,10 @@ program = "./deps/port_finance_variable_rate_lending.so"
 address = "FsJ3A3u2vn5cTVofAjvy6y5kwABJAqYWpe4975bi2epH"
 program = "./deps/mock_oracles.so"
 
+[[test.genesis]]
+address = "9xQeWvG816bUx9EPjHmaT23yvVM2ZWbrrpZb9PusVFin"
+program = "./deps/serum_dex.so"
+
 [programs.localnet]
 sundial = "SDLxV7m1qmoqkytqYRGY1x438AbYCqekPsPxK4kvwuk"
 
