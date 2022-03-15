@@ -14,7 +14,9 @@ export * from './sdk';
 export * from './wrappers';
 export * from './programs';
 
-const DEX_PID = new PublicKey('9xQeWvG816bUx9EPjHmaT23yvVM2ZWbrrpZb9PusVFin');
+export const DEX_PID = new PublicKey(
+  '9xQeWvG816bUx9EPjHmaT23yvVM2ZWbrrpZb9PusVFin',
+);
 
 /**
  * Setting up a Serum market.
@@ -140,8 +142,8 @@ export const setupSerumMarket = async ({
 
   tx1.addSigners(baseVault, quoteVault);
   tx2.addSigners(market, requestQueue, eventQueue, bids, asks);
-  tx1.confirm();
-  tx2.confirm();
+  await tx1.confirm();
+  await tx2.confirm();
 
   return market.publicKey;
 };
@@ -182,7 +184,7 @@ export const placeOrders = async ({
   });
   const { address: quoteAccount, instruction: ix2 } = await getOrCreateATA({
     provider: provider,
-    mint: market.baseMintAddress,
+    mint: market.quoteMintAddress,
   });
 
   if (ix1 || ix2) {

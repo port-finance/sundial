@@ -6,11 +6,17 @@ import {
 import { createMintAndVault } from '@project-serum/common';
 import * as anchor from '@project-serum/anchor';
 import { createDefaultReserve, createLendingMarket } from '../tests/utils';
-import { SolanaProvider } from '@saberhq/solana-contrib';
-import { SundialSDK, SundialWrapper } from '../src';
+import { SolanaProvider, TransactionEnvelope } from '@saberhq/solana-contrib';
+import {
+  DEX_PID,
+  placeOrders,
+  setupSerumMarket,
+  SundialSDK,
+  SundialWrapper,
+} from '../src';
 import { Keypair } from '@solana/web3.js';
 import { BN } from '@project-serum/anchor';
-import { MAX_U64 } from '@saberhq/token-utils';
+import { getOrCreateATA, MAX_U64 } from '@saberhq/token-utils';
 import { promises as fsPromises } from 'fs';
 import {
   ParsedAccount,
@@ -18,6 +24,8 @@ import {
   ReserveParser,
 } from '@port.finance/port-sdk';
 import { MockOraclesWrapper } from '@port.finance/mock-oracles';
+import { Market } from '@project-serum/serum';
+import { Token, TOKEN_PROGRAM_ID } from '@solana/spl-token';
 
 const JSON_OUTPUT_FILE = 'env.localnet.json';
 const sundialName = 'USDC';
@@ -31,32 +39,51 @@ const sundialMarket = [
   235, 1, 213, 62, 121, 192, 171, 251, 118, 45, 207, 226, 206, 98,
 ];
 
+const mintAmount = new anchor.BN(1000000000000);
 module.exports = async function (provider: anchor.Provider) {
   anchor.setProvider(provider);
-  console.log('Provider public key: ', provider.wallet.publicKey.toString());
-  const lendingMarket = await createLendingMarket(provider);
-  console.log('marketPublicKey: ', lendingMarket.publicKey.toString());
-  const [mintPubkey, vaultPubkey] = await createMintAndVault(
-    provider,
-    new anchor.BN(1000000000000),
-    provider.wallet.publicKey,
-    6,
-  );
-  const reserveState = await createDefaultReserve(
-    provider,
-    1,
-    vaultPubkey,
-    lendingMarket.publicKey,
-    DEFAULT_RESERVE_CONFIG,
-  );
-  console.log('mintPubkey', mintPubkey.toString());
-  console.log('reserveState', reserveState.address.toString());
   const solanaProvider = SolanaProvider.load({
     connection: provider.connection,
     sendConnection: provider.connection,
     wallet: provider.wallet,
     opts: provider.opts,
   });
+  console.log('Provider public key: ', provider.wallet.publicKey.toString());
+  const lendingMarket = await createLendingMarket(provider);
+  console.log('marketPublicKey: ', lendingMarket.publicKey.toString());
+  const [mintPubkey, vaultPubkey] = await createMintAndVault(
+    provider,
+    mintAmount,
+    provider.wallet.publicKey,
+    6,
+  );
+
+  const { address, instruction } = await getOrCreateATA({
+    provider: solanaProvider,
+    mint: mintPubkey,
+  });
+  const moveToAtaTx = new TransactionEnvelope(solanaProvider, [
+    instruction,
+    Token.createTransferInstruction(
+      TOKEN_PROGRAM_ID,
+      vaultPubkey,
+      address,
+      provider.wallet.publicKey,
+      [],
+      1000000000000,
+    ),
+  ]);
+  await moveToAtaTx.confirm();
+  const reserveState = await createDefaultReserve(
+    provider,
+    1,
+    address,
+    lendingMarket.publicKey,
+    DEFAULT_RESERVE_CONFIG,
+  );
+  console.log('mintPubkey', mintPubkey.toString());
+  console.log('reserveState', reserveState.address.toString());
+
   const sundialSDK = SundialSDK.load({
     provider: solanaProvider,
   });
@@ -120,4 +147,37 @@ module.exports = async function (provider: anchor.Provider) {
   });
   await fsPromises.writeFile(JSON_OUTPUT_FILE, jsonLog);
   console.log(`Environment info wrote to .anchor/${JSON_OUTPUT_FILE}`);
+  const serumMarket = await setupSerumMarket({
+    provider: solanaProvider,
+    baseMint: principalMint,
+    quoteMint: mintPubkey,
+  });
+  console.log('serum market: ', serumMarket.toString());
+
+  const loadedSerumMarket = await Market.load(
+    provider.connection,
+    serumMarket,
+    {},
+    DEX_PID,
+  );
+
+  const sundialW = sundialSDK.sundialWrapper;
+  sundialW.publicKey = sundialId;
+  await sundialW.reloadData();
+  const depositTx = await sundialW.mintPrincipleAndYieldTokens({
+    amount: new BN(100_000_000),
+    lendingMarket: lendingMarket.publicKey,
+    reserve: reserveInfo,
+    userLiquidityWallet: address,
+  });
+  console.log('Generating Principal and yield tokens');
+  await depositTx.confirm();
+
+  console.log('Placing orders');
+  await placeOrders({
+    provider: solanaProvider,
+    asks: [[1.1, 1]],
+    bids: [[0.9, 1]],
+    market: loadedSerumMarket,
+  });
 };
