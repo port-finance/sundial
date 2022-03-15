@@ -297,7 +297,7 @@ export async function createLendingMarket(
     provider,
     LENDING_MARKET_LEN,
     PORT_LENDING,
-    marketAccount
+    marketAccount,
   );
   await provider.send(
     (() => {
