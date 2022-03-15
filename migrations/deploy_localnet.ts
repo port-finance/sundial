@@ -165,7 +165,7 @@ module.exports = async function (provider: anchor.Provider) {
   sundialW.publicKey = sundialId;
   await sundialW.reloadData();
   const depositTx = await sundialW.mintPrincipleAndYieldTokens({
-    amount: new BN(100_000_000),
+    amount: new BN(1000_000_000),
     lendingMarket: lendingMarket.publicKey,
     reserve: reserveInfo,
     userLiquidityWallet: address,
@@ -176,8 +176,8 @@ module.exports = async function (provider: anchor.Provider) {
   console.log('Placing orders');
   await placeOrders({
     provider: solanaProvider,
-    asks: [[1.1, 1]],
-    bids: [[0.9, 1]],
+    asks: [[1, 1000]],
+    bids: [[0.9, 1000]],
     market: loadedSerumMarket,
   });
 };
