@@ -25,7 +25,7 @@ Say 1 Principal USDC (ppUSDC) is traded at 0.95 USDC. Then the interest that the
 ### Interest Rate Swap
 Since the yield tokens always maps to the lending interest rate over a given period. The buyer of the yield tokens can be considered as giving up fixed rate in favor of floating rate. The seller of the yield tokens can be considered as giving up the floating rate in favor of the fixed rate.
 
-## User interactions
+## User Interactions
 Users can create [Profile] to deposit Port LP tokens as collateral and mint Principal Token (ppToken) directly from Sundial and sell them in market for underlying, which is equivalent to borrow at a fixed rate.
 
 Users must repay the liquidity that corresponds to the ppToken they minted before ppToken matures, i.e. the sundial pool ends. Otherwise, users will be liquidated by others.
