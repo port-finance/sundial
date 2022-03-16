@@ -17,6 +17,10 @@ program = "./deps/mock_oracles.so"
 address = "9xQeWvG816bUx9EPjHmaT23yvVM2ZWbrrpZb9PusVFin"
 program = "./deps/serum_dex.so"
 
+[[test.genesis]]
+address = "22Y43yTVxuUkoRKdm9thyRhQ3SdgQS7c7kB6UNCiaczD"
+program = "./deps/serum_swap.so"
+
 [programs.localnet]
 sundial = "SDLxV7m1qmoqkytqYRGY1x438AbYCqekPsPxK4kvwuk"
 
