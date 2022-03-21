@@ -37,6 +37,7 @@ pub struct DepositAndMintTokens<'info> {
         ],
         bump = sundial.bumps.authority_bump
     )]
+    /// CHECK: Authority of the [SundialCollateral].
     pub sundial_authority: UncheckedAccount<'info>,
 
     #[account(
@@ -97,7 +98,7 @@ pub struct DepositAndMintTokens<'info> {
     pub clock: Sysvar<'info, Clock>,
 }
 
-pub fn process_mint_principle_tokens_and_yield_tokens(
+pub fn process_deposit_and_mint_tokens(
     ctx: Context<DepositAndMintTokens>,
     amount: u64,
 ) -> ProgramResult {

@@ -34,7 +34,7 @@ pub mod sundial {
     }
 
     #[process]
-    fn mint_principle_tokens_and_yield_tokens(ctx: Context<DepositAndMintTokens>, amount: u64) {}
+    fn deposit_and_mint_tokens(ctx: Context<DepositAndMintTokens>, amount: u64) {}
 
     #[process]
     fn redeem_principle_tokens(ctx: Context<RedeemPrincipleToken>, amount: u64) {}

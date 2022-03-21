@@ -31,7 +31,9 @@ pub struct Sundial {
     pub token_program: Pubkey,
     /// Port Finance Variable Rate Lending Program.
     pub port_lending_program: Pubkey,
+    /// The sundial market that it belongs to.
     pub sundial_market: Pubkey,
+    /// Oracle to look up the price for.
     pub oracle: Pubkey,
     /// Configuration for the given [Sundial].
     pub config: SundialConfig,

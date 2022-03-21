@@ -37,6 +37,7 @@ pub struct WithdrawSundialCollateral<'info> {
         ],
         bump = sundial_collateral.bumps.authority_bump
     )]
+    /// CHECK: Authority of the [SundialCollateral].
     pub sundial_collateral_authority: UncheckedAccount<'info>,
 
     #[account(
