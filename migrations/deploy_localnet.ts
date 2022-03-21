@@ -42,21 +42,23 @@ const sundialMarket = [
 const mintAmount = new anchor.BN(1000000000000);
 module.exports = async function (provider: anchor.Provider) {
   anchor.setProvider(provider);
-  const solanaProvider = SolanaProvider.load({
+  const solanaProvider = SolanaProvider.init({
     connection: provider.connection,
-    sendConnection: provider.connection,
     wallet: provider.wallet,
     opts: provider.opts,
   });
   console.log('Provider public key: ', provider.wallet.publicKey.toString());
+
   const lendingMarket = await createLendingMarket(provider);
   console.log('marketPublicKey: ', lendingMarket.publicKey.toString());
+
   const [mintPubkey, vaultPubkey] = await createMintAndVault(
     provider,
     mintAmount,
     provider.wallet.publicKey,
     6,
   );
+  console.log('mintPubkey', mintPubkey.toString());
 
   const { address, instruction } = await getOrCreateATA({
     provider: solanaProvider,
@@ -74,6 +76,7 @@ module.exports = async function (provider: anchor.Provider) {
     ),
   ]);
   await moveToAtaTx.confirm();
+
   const reserveState = await createDefaultReserve(
     provider,
     1,
@@ -81,8 +84,7 @@ module.exports = async function (provider: anchor.Provider) {
     lendingMarket.publicKey,
     DEFAULT_RESERVE_CONFIG,
   );
-  console.log('mintPubkey', mintPubkey.toString());
-  console.log('reserveState', reserveState.address.toString());
+  console.log('ReserveState', reserveState.address.toString());
 
   const sundialSDK = SundialSDK.load({
     provider: solanaProvider,
@@ -94,6 +96,7 @@ module.exports = async function (provider: anchor.Provider) {
     payer: provider.wallet.publicKey,
   });
   createMarketTx.confirm();
+
   const raw = {
     pubkey: reserveState.address,
     account: await provider.connection.getAccountInfo(reserveState.address),
@@ -103,19 +106,20 @@ module.exports = async function (provider: anchor.Provider) {
   const usdcOracleKP = await mockOraclesWrapper.createAccount(
     mockOraclesWrapper.PYTH_PRICE_ACCOUNT_SIZE,
   );
+
+  const liquidityCap = new BN(10_000_000_000);
   const createSundialTx = await sundialSDK.sundialWrapper.createSundial({
     sundialName,
     owner: provider.wallet.publicKey,
-    durationInSeconds: new anchor.BN(8640000), // 8th of August 2028
+    durationInSeconds: new anchor.BN(8640000), // 100 days
     liquidityMint: mintPubkey,
     oracle: usdcOracleKP.publicKey,
     sundialMarket: sundialMarketBase.publicKey,
     reserve: reserveInfo,
-    liquidityCap: new BN(MAX_U64.toString()),
+    liquidityCap,
   });
   await createSundialTx.confirm();
 
-  const liquidityCap = new BN(10_000_000_000);
   const createSundialCollateralTx =
     await sundialSDK.sundialCollateralWrapper.createSundialCollateral({
       name: sundialCollateralName,
@@ -144,18 +148,13 @@ module.exports = async function (provider: anchor.Provider) {
 
   const jsonLog = JSON.stringify({
     provider: provider.wallet.publicKey.toString(),
-    walletPriv: [],
     lendingMarket: lendingMarket.publicKey.toString(),
     sundialMarket: sundialMarketBase.publicKey.toString(),
-    liquidityMint: mintPubkey.toString(),
-    principalMint: principalMint.toString(),
-    reserveState: reserveState.address.toString(),
     serumMarket: serumMarket.toString(),
     oraclePriv: Array.from(usdcOracleKP.secretKey),
   });
   await fsPromises.writeFile(JSON_OUTPUT_FILE, jsonLog);
   console.log(`Environment info wrote to .anchor/${JSON_OUTPUT_FILE}`);
-
 
   const loadedSerumMarket = await Market.load(
     provider.connection,
