@@ -23,12 +23,6 @@ pub struct InitializeSundialCollateral<'info> {
     #[account(
         init,
         payer = owner,
-        seeds = [
-            sundial_market.key().as_ref(),
-            name.as_ref(),
-            b"collateral"
-        ],
-        bump = pda_bump
     )]
     pub sundial_collateral: Account<'info, SundialCollateral>,
 
