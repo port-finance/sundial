@@ -18,20 +18,37 @@ use crate::error::*;
 
 use anchor_lang::prelude::*;
 use anchor_spl::token::{Mint, TokenAccount};
-use port_anchor_adaptor::{Deposit as PortDeposit, PortReserve, Redeem};
+use port_anchor_adaptor::{Deposit as PortDeposit, PortLendingMarket, PortReserve, Redeem};
 
 #[derive(Accounts)]
 pub struct PortAccounts<'info> {
     #[account(owner = port_lending_program.key())]
-    pub lending_market: UncheckedAccount<'info>,
+    pub lending_market: Box<Account<'info, PortLendingMarket>>,
+
+    #[account(
+        seeds = [
+            lending_market.key().as_ref(),
+        ],
+        bump = lending_market.bump_seed
+    )]
+    /// CHECK: Authority for [PortLendingMarket].
     pub lending_market_authority: UncheckedAccount<'info>,
-    #[account(mut, owner = port_lending_program.key(), constraint = !reserve.last_update.stale @ SundialError::ReserveIsNotRefreshed)]
+
+    #[account(
+        mut,
+        owner = port_lending_program.key(),
+        constraint = !reserve.last_update.stale @ SundialError::ReserveIsNotRefreshed
+    )]
     pub reserve: Box<Account<'info, PortReserve>>,
+
     #[account(mut)]
     pub reserve_liquidity_wallet: Box<Account<'info, TokenAccount>>,
+
     #[account(mut)]
     pub reserve_collateral_mint: Box<Account<'info, Mint>>,
+
     #[account(executable)]
+    /// CHECK: Port Lending Program.
     pub port_lending_program: UncheckedAccount<'info>,
 }
 

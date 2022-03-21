@@ -39,6 +39,7 @@ pub struct InitializeSundialCollateral<'info> {
         ],
         bump = bumps.authority_bump
     )]
+    /// CHECK: Authority of the [SundialCollateral].
     pub sundial_collateral_authority: UncheckedAccount<'info>,
 
     /// Sundial Collateral controlled Port Lp token Account.
@@ -50,8 +51,8 @@ pub struct InitializeSundialCollateral<'info> {
             b"lp"
         ],
         bump = bumps.port_lp_bump,
-        token::authority=sundial_collateral_authority,
-        token::mint=port_lp_mint
+        token::authority = sundial_collateral_authority,
+        token::mint = port_lp_mint
     )]
     pub sundial_collateral_lp_wallet: Box<Account<'info, TokenAccount>>,
 

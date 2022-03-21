@@ -31,6 +31,7 @@ pub struct RedeemLp<'info> {
         ],
         bump = sundial.bumps.authority_bump
     )]
+    /// CHECK: Authority of the [Sundial].
     pub sundial_authority: UncheckedAccount<'info>,
 
     #[account(

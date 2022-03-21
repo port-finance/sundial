@@ -37,6 +37,7 @@ pub struct DepositAndMintTokens<'info> {
         ],
         bump = sundial.bumps.authority_bump
     )]
+    /// CHECK: Authority of the [SundialCollateral].
     pub sundial_authority: UncheckedAccount<'info>,
 
     #[account(
