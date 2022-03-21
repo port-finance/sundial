@@ -197,19 +197,10 @@
     bn.js "^5.1.2"
     buffer-layout "^1.2.0"
 
-"@pythnetwork/client@^2.5.1":
-  version "2.5.1"
-  resolved "https://registry.yarnpkg.com/@pythnetwork/client/-/client-2.5.1.tgz#f15c1f2394157f4a97fa8725b93ad887d534e776"
-  integrity sha512-QXt31aWuVi02yvjmNEFDKurTkeTL/BEM4Ney4uixUbkxZDSrYRUuYNXPTrylRLdT3C3DlbF858/Jt7DwtLMR2w==
-  dependencies:
-    "@solana/web3.js" "^1.30.2"
-    assert "^2.0.0"
-    buffer "^6.0.1"
-
-"@pythnetwork/client@^2.5.3":
-  version "2.5.3"
-  resolved "https://registry.yarnpkg.com/@pythnetwork/client/-/client-2.5.3.tgz#86c9f92d01d8f282fdd8b5b11039da654e263988"
-  integrity sha512-NBLxPnA6A3tZb/DYUooD4SO63UJ70s9DzzFPGXcQNBR9itcycp7aaV+UA5oUPloD/4UHL9soo2fRuDVur0gmhA==
+"@pythnetwork/client@^2.5.1", "@pythnetwork/client@^2.5.3":
+  version "2.6.1"
+  resolved "https://registry.yarnpkg.com/@pythnetwork/client/-/client-2.6.1.tgz#ae6366174a3e65ecbf4c6c375af74deb11ef42dc"
+  integrity sha512-OAooihfaWceznJ408TvBeUUQFYajH6WbaZeQg7lY3mPpRHW0Hqh6me0qX5zaw3gECtUQm2VYS6fs6qwrqrYHww==
   dependencies:
     "@solana/web3.js" "^1.30.2"
     assert "^2.0.0"
