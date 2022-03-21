@@ -170,7 +170,6 @@ describe('Sundial Interacting with Port Reserve that has positive APY', () => {
       amount,
       userLiquidityWallet: liquidityVault,
       reserve: parsedReserve,
-      lendingMarket: lendingMarketKP.publicKey,
     });
     await expectTX(depositTx, 'mint principle and yield').to.be.fulfilled;
 
@@ -222,7 +221,6 @@ describe('Sundial Interacting with Port Reserve that has positive APY', () => {
       amount: new BN(100),
       userLiquidityWallet: liquidityVault,
       reserve: parsedReserve,
-      lendingMarket: lendingMarketKP.publicKey,
     });
     await expectTX(depositTx, 'fail mint principle and yield').to.be.rejected;
   });

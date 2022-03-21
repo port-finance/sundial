@@ -107,7 +107,6 @@ describe('sundial', () => {
       amount,
       userLiquidityWallet: liquidityVault,
       reserve: parsedReserve,
-      lendingMarket: lendingMarketKP.publicKey,
     });
     await expectTX(depositTx, 'mint principle and yield').to.be.fulfilled;
 

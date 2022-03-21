@@ -148,13 +148,11 @@ export class SundialWrapper extends SundialAccountWrapper {
 
   public async mintPrincipleAndYieldTokens({
     amount,
-    lendingMarket,
     reserve,
     userLiquidityWallet,
     userAuthorityKP,
   }: {
     amount: BN;
-    lendingMarket: PublicKey;
     reserve: ParsedAccount<ReserveData>;
     userLiquidityWallet: PublicKey;
     userAuthorityKP?: Keypair;
@@ -180,7 +178,7 @@ export class SundialWrapper extends SundialAccountWrapper {
     const ixs = [ix1, ix2].filter(ix => !!ix);
 
     const [lendingMarketAuthority] = await PublicKey.findProgramAddress(
-      [lendingMarket.toBuffer()],
+      [reserve.data.lendingMarket.toBuffer()],
       PORT_LENDING,
     );
 
