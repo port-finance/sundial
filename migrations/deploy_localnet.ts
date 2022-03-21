@@ -135,6 +135,13 @@ module.exports = async function (provider: anchor.Provider) {
   const [principalMint] = await sundialSDK.getPrincipleMintAndBump(sundialId);
   console.log('principalMint', principalMint.toString());
 
+  const serumMarket = await setupSerumMarket({
+    provider: solanaProvider,
+    baseMint: principalMint,
+    quoteMint: mintPubkey,
+  });
+  console.log('serum market: ', serumMarket.toString());
+
   const jsonLog = JSON.stringify({
     provider: provider.wallet.publicKey.toString(),
     walletPriv: [],
@@ -143,16 +150,12 @@ module.exports = async function (provider: anchor.Provider) {
     liquidityMint: mintPubkey.toString(),
     principalMint: principalMint.toString(),
     reserveState: reserveState.address.toString(),
+    serumMarket: serumMarket.toString(),
     oraclePriv: Array.from(usdcOracleKP.secretKey),
   });
   await fsPromises.writeFile(JSON_OUTPUT_FILE, jsonLog);
   console.log(`Environment info wrote to .anchor/${JSON_OUTPUT_FILE}`);
-  const serumMarket = await setupSerumMarket({
-    provider: solanaProvider,
-    baseMint: principalMint,
-    quoteMint: mintPubkey,
-  });
-  console.log('serum market: ', serumMarket.toString());
+
 
   const loadedSerumMarket = await Market.load(
     provider.connection,
