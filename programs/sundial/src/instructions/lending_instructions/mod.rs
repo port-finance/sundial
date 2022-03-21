@@ -25,12 +25,6 @@ pub struct PortAccounts<'info> {
     #[account(owner = port_lending_program.key())]
     pub lending_market: Box<Account<'info, PortLendingMarket>>,
 
-    #[account(
-        seeds = [
-            lending_market.key().as_ref(),
-        ],
-        bump = lending_market.bump_seed
-    )]
     /// CHECK: Authority for [PortLendingMarket].
     pub lending_market_authority: UncheckedAccount<'info>,
 
