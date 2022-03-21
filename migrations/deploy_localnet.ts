@@ -14,7 +14,7 @@ import {
   SundialSDK,
   SundialWrapper,
 } from '../src';
-import { Keypair } from '@solana/web3.js';
+import { Keypair, PublicKey } from '@solana/web3.js';
 import { BN } from '@project-serum/anchor';
 import { getOrCreateATA } from '@saberhq/token-utils';
 import { promises as fsPromises } from 'fs';
@@ -177,7 +177,6 @@ module.exports = async function (provider: anchor.Provider) {
   await sundialW.reloadData();
   const depositTx = await sundialW.mintPrincipleAndYieldTokens({
     amount: new BN(1000_000_000),
-    lendingMarket: lendingMarket.publicKey,
     reserve: reserveInfo,
     userLiquidityWallet: address,
   });
@@ -191,4 +190,78 @@ module.exports = async function (provider: anchor.Provider) {
     bids: [[0.9, 1000]],
     market: loadedSerumMarket,
   });
+};
+
+const setupSundialAndSerumMarket = async ({
+  provider,
+  sundialName,
+  sundialSDK,
+  mintPubkey,
+  oraclePubkey,
+  sundialMarket,
+  reserveInfo,
+}: {
+  provider: SolanaProvider;
+  sundialName: string;
+  sundialSDK: SundialSDK;
+  mintPubkey: PublicKey;
+  oraclePubkey: PublicKey;
+  sundialMarket: PublicKey;
+  reserveInfo: ParsedAccount<ReserveData>;
+}): Promise<[PublicKey, PublicKey]> => {
+  const liquidityCap = new BN(10_000_000_000);
+  const createSundialTx = await sundialSDK.sundialWrapper.createSundial({
+    sundialName,
+    owner: provider.wallet.publicKey,
+    durationInSeconds: new anchor.BN(8640000), // 100 days
+    liquidityMint: mintPubkey,
+    oracle: oraclePubkey,
+    sundialMarket,
+    reserve: reserveInfo,
+    liquidityCap,
+  });
+  await createSundialTx.confirm();
+
+  const [sundialId] = await SundialWrapper.getSundialKeyAndBump(
+    sundialName,
+    sundialMarket,
+  );
+  const [principalMint] = await sundialSDK.getPrincipleMintAndBump(sundialId);
+
+  const serumMarket = await setupSerumMarket({
+    provider,
+    baseMint: principalMint,
+    quoteMint: mintPubkey,
+    market: Keypair.fromSecretKey(Buffer.from(serumMarketKey)),
+  });
+
+  const sundialW = sundialSDK.sundialWrapper;
+  sundialW.publicKey = sundialId;
+  await sundialW.reloadData();
+
+  const { address: userLiquidityWallet } = await getOrCreateATA({
+    provider,
+    mint: reserveInfo.data.liquidity.mintPubkey,
+  });
+  const depositTx = await sundialW.mintPrincipleAndYieldTokens({
+    amount: new BN(1000_000_000),
+    reserve: reserveInfo,
+    userLiquidityWallet,
+  });
+  await depositTx.confirm();
+
+  const loadedSerumMarket = await Market.load(
+    provider.connection,
+    serumMarket,
+    {},
+    DEX_PID,
+  );
+  await placeOrders({
+    provider,
+    asks: [[1, 1000]],
+    bids: [[0.9, 1000]],
+    market: loadedSerumMarket,
+  });
+
+  return [sundialId, serumMarket];
 };
