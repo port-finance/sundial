@@ -16,7 +16,7 @@ import {
 } from '../src';
 import { Keypair } from '@solana/web3.js';
 import { BN } from '@project-serum/anchor';
-import { getOrCreateATA, MAX_U64 } from '@saberhq/token-utils';
+import { getOrCreateATA } from '@saberhq/token-utils';
 import { promises as fsPromises } from 'fs';
 import {
   ParsedAccount,
@@ -38,6 +38,11 @@ const sundialMarket = [
   208, 98, 3, 240, 16, 194, 151, 51, 114, 43, 180, 124, 126, 163, 199, 188, 194,
   235, 1, 213, 62, 121, 192, 171, 251, 118, 45, 207, 226, 206, 98,
 ];
+
+// Public Key: `4vhDYDrMGHk6DVxe74sFR7RGeiJTUB9EeJx75Fco7wui`
+const serumMarketKey = [
+  98,94,127,179,30,1,252,26,184,247,141,165,108,210,0,22,76,75,165,23,125,76,75,122,151,11,227,124,220,35,102,113,58,84,80,244,233,100,225,52,248,16,232,41,14,17,229,218,118,29,250,14,149,218,73,177,23,195,198,27,67,160,85,185]
+
 
 const mintAmount = new anchor.BN(1000000000000);
 module.exports = async function (provider: anchor.Provider) {
@@ -143,6 +148,7 @@ module.exports = async function (provider: anchor.Provider) {
     provider: solanaProvider,
     baseMint: principalMint,
     quoteMint: mintPubkey,
+    market: Keypair.fromSecretKey(Buffer.from(serumMarketKey))
   });
   console.log('serum market: ', serumMarket.toString());
 
