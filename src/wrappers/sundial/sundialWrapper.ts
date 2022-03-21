@@ -191,7 +191,7 @@ export class SundialWrapper extends SundialAccountWrapper {
           ? reserve.data.liquidity.oraclePubkey
           : null,
       ),
-      this.program.instruction.mintPrincipleTokensAndYieldTokens(amount, {
+      this.program.instruction.depositAndMintTokens(amount, {
         accounts: {
           sundial: this.publicKey,
           sundialAuthority: (await this.getAuthorityAndBump())[0],
