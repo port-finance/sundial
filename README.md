@@ -62,11 +62,6 @@ In a separate terminal run the following command to set up all the on-chain prog
 anchor migrate
 ```
 
-Change directory and run the front end
-```
-cd app
-yarn start
-```
 
 ### To run the tests locally
 ```
