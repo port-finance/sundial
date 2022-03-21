@@ -41,8 +41,11 @@ const sundialMarket = [
 
 // Public Key: `4vhDYDrMGHk6DVxe74sFR7RGeiJTUB9EeJx75Fco7wui`
 const serumMarketKey = [
-  98,94,127,179,30,1,252,26,184,247,141,165,108,210,0,22,76,75,165,23,125,76,75,122,151,11,227,124,220,35,102,113,58,84,80,244,233,100,225,52,248,16,232,41,14,17,229,218,118,29,250,14,149,218,73,177,23,195,198,27,67,160,85,185]
-
+  98, 94, 127, 179, 30, 1, 252, 26, 184, 247, 141, 165, 108, 210, 0, 22, 76, 75,
+  165, 23, 125, 76, 75, 122, 151, 11, 227, 124, 220, 35, 102, 113, 58, 84, 80,
+  244, 233, 100, 225, 52, 248, 16, 232, 41, 14, 17, 229, 218, 118, 29, 250, 14,
+  149, 218, 73, 177, 23, 195, 198, 27, 67, 160, 85, 185,
+];
 
 const mintAmount = new anchor.BN(1000000000000);
 module.exports = async function (provider: anchor.Provider) {
@@ -148,7 +151,7 @@ module.exports = async function (provider: anchor.Provider) {
     provider: solanaProvider,
     baseMint: principalMint,
     quoteMint: mintPubkey,
-    market: Keypair.fromSecretKey(Buffer.from(serumMarketKey))
+    market: Keypair.fromSecretKey(Buffer.from(serumMarketKey)),
   });
   console.log('serum market: ', serumMarket.toString());
 
