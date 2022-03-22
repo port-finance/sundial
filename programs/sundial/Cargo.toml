@@ -26,7 +26,7 @@ port-anchor-adaptor = "0.2.8"
 solana-maths = "0.1.2"
 port-variable-rate-lending-instructions = "0.3.0"
 paste = "1.0.6"
-vipers = "1.5.5"
+vipers = "2.0.2"
 pyth-client = "0.2.2"
 itertools = "0.10.1"
 sundial-derives = {path = "../../sundial-derives"}
