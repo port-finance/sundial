@@ -207,11 +207,11 @@
     buffer "^6.0.1"
 
 "@saberhq/anchor-contrib@^1.10.4", "@saberhq/anchor-contrib@^1.12.20", "@saberhq/anchor-contrib@^1.12.53":
-  version "1.12.53"
-  resolved "https://registry.yarnpkg.com/@saberhq/anchor-contrib/-/anchor-contrib-1.12.53.tgz#4cc46fdf0639315db73573b3190a1d6d5b942412"
-  integrity sha512-RYLHKYVxE3Oz0BeNgi6nIXH1kfGYYE4cYLgEAgBwbi4fFA3bFWNXVgXMiBDHBDBwx3wdKpKj/USDGz7xOcbtFw==
+  version "1.12.55"
+  resolved "https://registry.yarnpkg.com/@saberhq/anchor-contrib/-/anchor-contrib-1.12.55.tgz#57a78841f5ebb1414c93c2c2b11ba3362ef28d77"
+  integrity sha512-Kh+/jF9SQR52ybEne5ey2wnpGZN8vj6Eh4EVtZBfZfX5zTIoMDfURTjoHTJHjU8cRWLuRrhP5OtkxO4h0bfrkg==
   dependencies:
-    "@saberhq/solana-contrib" "^1.12.53"
+    "@saberhq/solana-contrib" "^1.12.55"
     eventemitter3 "^4.0.7"
     lodash.camelcase "^4.3.0"
     lodash.mapvalues "^4.6.0"
