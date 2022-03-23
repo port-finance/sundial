@@ -27,6 +27,7 @@ export const setupSerumMarket = async ({
   provider,
   baseMint,
   quoteMint,
+  market = Keypair.generate(),
   baseLotSize = 10000,
   quoteLotSize = 100,
   feeRateBps = 0,
@@ -34,11 +35,11 @@ export const setupSerumMarket = async ({
   provider: SolanaProvider;
   baseMint: PublicKey;
   quoteMint: PublicKey;
+  market?: Keypair;
   baseLotSize?: number;
   quoteLotSize?: number;
   feeRateBps?: number;
 }) => {
-  const market = new Keypair();
   const requestQueue = new Keypair();
   const eventQueue = new Keypair();
   const bids = new Keypair();
@@ -55,7 +56,7 @@ export const setupSerumMarket = async ({
   );
 
   const tx1 = new TransactionEnvelope(provider, []);
-  tx1.addInstructions(
+  tx1.append(
     SystemProgram.createAccount({
       fromPubkey: wallet.publicKey,
       newAccountPubkey: baseVault.publicKey,
@@ -83,7 +84,7 @@ export const setupSerumMarket = async ({
   );
 
   const tx2 = new TransactionEnvelope(provider, []);
-  tx2.addInstructions(
+  tx2.append(
     SystemProgram.createAccount({
       fromPubkey: wallet.publicKey,
       newAccountPubkey: market.publicKey,

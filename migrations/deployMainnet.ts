@@ -16,7 +16,7 @@ import { MAX_U64 } from '@saberhq/token-utils';
 const DAY_IN_SECS = 24 * 60 * 60;
 const MONTH_IN_SECS = 30 * DAY_IN_SECS;
 
-module.exports = async function (provider) {
+export const deployMainnet = async function (provider) {
   anchor.setProvider(provider);
   const solanaProvider = SolanaProvider.load({
     connection: provider.connection,
@@ -45,7 +45,7 @@ module.exports = async function (provider) {
   });
   createMarketTx.confirm();
   const createTx = await sundialSDK.sundialWrapper.createSundial({
-    sundialBase: sundialKeypair,
+    sundialBase: sundialKeypair.publicKey,
     owner: provider.wallet.publicKey,
     durationInSeconds: new anchor.BN(3 * MONTH_IN_SECS), // 3 months
     liquidityMint: new PublicKey(
