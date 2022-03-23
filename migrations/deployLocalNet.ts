@@ -48,7 +48,7 @@ const serumMarketKey = [
 ];
 
 const mintAmount = new anchor.BN(1000000000000);
-module.exports = async function (provider: anchor.Provider) {
+export const deployLocalNet = async function (provider: anchor.Provider) {
   anchor.setProvider(provider);
   const solanaProvider = SolanaProvider.init({
     connection: provider.connection,
@@ -126,6 +126,7 @@ module.exports = async function (provider: anchor.Provider) {
     lendingMarket: lendingMarket.publicKey.toString(),
     sundialMarket: sundialMarketBase.publicKey.toString(),
     principalMint: principalMint.toString(),
+    liquidityMint: mintPubkey.toString(),
     reserveState: reserveState.address.toString(),
     serumMarket: serumMarket.toString(),
     oraclePriv: Array.from(usdcOracleKP.secretKey),
@@ -165,7 +166,7 @@ const createTokenAndMintToATA = async ({
       address,
       provider.wallet.publicKey,
       [],
-      amount,
+      amount.toNumber(),
     ),
   ]);
   await moveToAtaTx.confirm();
