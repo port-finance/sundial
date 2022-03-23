@@ -60,30 +60,10 @@ module.exports = async function (provider: anchor.Provider) {
   const lendingMarket = await createLendingMarket(provider);
   console.log('marketPublicKey: ', lendingMarket.publicKey.toString());
 
-  const [mintPubkey, vaultPubkey] = await createMintAndVault(
-    provider,
-    mintAmount,
-    provider.wallet.publicKey,
-    6,
-  );
-  console.log('mintPubkey', mintPubkey.toString());
-
-  const { address, instruction } = await getOrCreateATA({
+  const [mintPubkey, address] = await createTokenAndMintToATA({
     provider: solanaProvider,
-    mint: mintPubkey,
+    amount: mintAmount,
   });
-  const moveToAtaTx = new TransactionEnvelope(solanaProvider, [
-    instruction,
-    Token.createTransferInstruction(
-      TOKEN_PROGRAM_ID,
-      vaultPubkey,
-      address,
-      provider.wallet.publicKey,
-      [],
-      1000000000000,
-    ),
-  ]);
-  await moveToAtaTx.confirm();
 
   const reserveState = await createDefaultReserve(
     provider,
@@ -190,6 +170,44 @@ module.exports = async function (provider: anchor.Provider) {
     bids: [[0.9, 1000]],
     market: loadedSerumMarket,
   });
+};
+
+const createTokenAndMintToATA = async ({
+  provider,
+  amount,
+  owner = provider.wallet.publicKey,
+  decimal = 6,
+}: {
+  provider: SolanaProvider;
+  amount: BN;
+  owner?: PublicKey;
+  decimal?: number;
+}): Promise<[PublicKey, PublicKey]> => {
+  const [mintPubkey, vaultPubkey] = await createMintAndVault(
+    new anchor.Provider(provider.connection, provider.wallet, provider.opts),
+    amount,
+    owner,
+    decimal,
+  );
+  console.log('mintPubkey', mintPubkey.toString());
+
+  const { address, instruction } = await getOrCreateATA({
+    provider,
+    mint: mintPubkey,
+  });
+  const moveToAtaTx = new TransactionEnvelope(provider, [
+    instruction,
+    Token.createTransferInstruction(
+      TOKEN_PROGRAM_ID,
+      vaultPubkey,
+      address,
+      provider.wallet.publicKey,
+      [],
+      1000000000000,
+    ),
+  ]);
+  await moveToAtaTx.confirm();
+  return [mintPubkey, address];
 };
 
 const setupSundialAndSerumMarket = async ({
