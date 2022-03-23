@@ -109,7 +109,7 @@ module.exports = async function (provider: anchor.Provider) {
     });
   await createSundialCollateralTx.confirm();
 
-  const [, serumMarket] = await setupSundialAndSerumMarket({
+  const [sundialKey, serumMarket] = await setupSundialAndSerumMarket({
     provider: solanaProvider,
     sundialName,
     sundialSDK,
@@ -119,10 +119,14 @@ module.exports = async function (provider: anchor.Provider) {
     reserveInfo,
   });
 
+  const [principalMint] = await sundialSDK.getPrincipleMintAndBump(sundialKey);
+
   const jsonLog = JSON.stringify({
     provider: provider.wallet.publicKey.toString(),
     lendingMarket: lendingMarket.publicKey.toString(),
     sundialMarket: sundialMarketBase.publicKey.toString(),
+    principalMint: principalMint.toString(),
+    reserveState: reserveState.address.toString(),
     serumMarket: serumMarket.toString(),
     oraclePriv: Array.from(usdcOracleKP.secretKey),
   });
