@@ -116,7 +116,7 @@ module.exports = async function (provider: anchor.Provider) {
     mintPubkey,
     oraclePubkey: usdcOracleKP.publicKey,
     sundialMarket: sundialMarketBase.publicKey,
-    reserveInfo
+    reserveInfo,
   });
 
   const jsonLog = JSON.stringify({
@@ -176,7 +176,7 @@ const setupSundialAndSerumMarket = async ({
   oraclePubkey,
   sundialMarket,
   reserveInfo,
-  durationInSeconds = new anchor.BN(8640000)  // 100 days
+  durationInSeconds = new anchor.BN(8640000), // 100 days
 }: {
   provider: SolanaProvider;
   sundialName: string;
