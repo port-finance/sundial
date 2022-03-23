@@ -119,6 +119,13 @@ export const deployLocalNet = async function (provider: anchor.Provider) {
     reserveInfo,
   });
 
+  console.log(
+    'sundial Key',
+    sundialKey.toString(),
+    'serum market',
+    serumMarket.toString(),
+  );
+
   const [principalMint] = await sundialSDK.getPrincipleMintAndBump(sundialKey);
 
   const jsonLog = JSON.stringify({
