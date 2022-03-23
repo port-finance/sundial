@@ -28,7 +28,8 @@ import { Market } from '@project-serum/serum';
 import { Token, TOKEN_PROGRAM_ID } from '@solana/spl-token';
 
 const JSON_OUTPUT_FILE = 'env.localnet.json';
-const sundialName = 'USDC';
+const sundialName = 'USDCJune2022';
+const sundialName2 = 'USDCMay2022';
 const sundialCollateralName = 'SRM';
 
 // Public Key: `jDNZtiREbJdF3kzN7RZhgpgWUhCrCprBzZWtmYYa77w`
@@ -46,6 +47,9 @@ const serumMarketKey = [
   244, 233, 100, 225, 52, 248, 16, 232, 41, 14, 17, 229, 218, 118, 29, 250, 14,
   149, 218, 73, 177, 23, 195, 198, 27, 67, 160, 85, 185,
 ];
+
+// Public Key: `4e4Bjzr5jByGYoPgYmg5KPCMxx4UviF92j4D622k4voD`
+const serumMarketKey2 = [159,75,249,52,121,44,118,150,228,232,31,161,127,137,233,13,209,138,78,196,128,8,96,6,36,23,193,119,145,173,46,10,54,17,38,248,85,68,141,192,207,184,255,31,160,171,152,195,11,32,21,173,115,116,170,239,105,210,93,145,140,91,125,116];
 
 const mintAmount = new anchor.BN(1000000000000);
 export const deployLocalNet = async function (provider: anchor.Provider) {
@@ -117,6 +121,7 @@ export const deployLocalNet = async function (provider: anchor.Provider) {
     oraclePubkey: usdcOracleKP.publicKey,
     sundialMarket: sundialMarketBase.publicKey,
     reserveInfo,
+    serumMarketKp: Keypair.fromSecretKey(Buffer.from(serumMarketKey))
   });
 
   console.log(
@@ -124,6 +129,25 @@ export const deployLocalNet = async function (provider: anchor.Provider) {
     sundialKey.toString(),
     'serum market',
     serumMarket.toString(),
+  );
+
+  const [sundialKey2, serumMarket2] = await setupSundialAndSerumMarket({
+    provider: solanaProvider,
+    sundialName: sundialName2,
+    sundialSDK,
+    mintPubkey,
+    oraclePubkey: usdcOracleKP.publicKey,
+    sundialMarket: sundialMarketBase.publicKey,
+    reserveInfo,
+    durationInSeconds: new BN(3600),
+    serumMarketKp: Keypair.fromSecretKey(Buffer.from(serumMarketKey2))
+  });
+
+  console.log(
+    'sundial Key',
+    sundialKey2.toString(),
+    'serum market',
+    serumMarket2.toString(),
   );
 
   const [principalMint] = await sundialSDK.getPrincipleMintAndBump(sundialKey);
@@ -183,6 +207,7 @@ const createTokenAndMintToATA = async ({
 const setupSundialAndSerumMarket = async ({
   provider,
   sundialName,
+  serumMarketKp,
   sundialSDK,
   mintPubkey,
   oraclePubkey,
@@ -192,6 +217,7 @@ const setupSundialAndSerumMarket = async ({
 }: {
   provider: SolanaProvider;
   sundialName: string;
+  serumMarketKp: Keypair;
   sundialSDK: SundialSDK;
   mintPubkey: PublicKey;
   oraclePubkey: PublicKey;
@@ -222,7 +248,7 @@ const setupSundialAndSerumMarket = async ({
     provider,
     baseMint: principalMint,
     quoteMint: mintPubkey,
-    market: Keypair.fromSecretKey(Buffer.from(serumMarketKey)),
+    market: serumMarketKp,
   });
 
   const sundialW = sundialSDK.sundialWrapper;
