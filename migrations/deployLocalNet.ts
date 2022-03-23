@@ -49,7 +49,12 @@ const serumMarketKey = [
 ];
 
 // Public Key: `4e4Bjzr5jByGYoPgYmg5KPCMxx4UviF92j4D622k4voD`
-const serumMarketKey2 = [159,75,249,52,121,44,118,150,228,232,31,161,127,137,233,13,209,138,78,196,128,8,96,6,36,23,193,119,145,173,46,10,54,17,38,248,85,68,141,192,207,184,255,31,160,171,152,195,11,32,21,173,115,116,170,239,105,210,93,145,140,91,125,116];
+const serumMarketKey2 = [
+  159, 75, 249, 52, 121, 44, 118, 150, 228, 232, 31, 161, 127, 137, 233, 13,
+  209, 138, 78, 196, 128, 8, 96, 6, 36, 23, 193, 119, 145, 173, 46, 10, 54, 17,
+  38, 248, 85, 68, 141, 192, 207, 184, 255, 31, 160, 171, 152, 195, 11, 32, 21,
+  173, 115, 116, 170, 239, 105, 210, 93, 145, 140, 91, 125, 116,
+];
 
 const mintAmount = new anchor.BN(1000000000000);
 export const deployLocalNet = async function (provider: anchor.Provider) {
@@ -121,7 +126,7 @@ export const deployLocalNet = async function (provider: anchor.Provider) {
     oraclePubkey: usdcOracleKP.publicKey,
     sundialMarket: sundialMarketBase.publicKey,
     reserveInfo,
-    serumMarketKp: Keypair.fromSecretKey(Buffer.from(serumMarketKey))
+    serumMarketKp: Keypair.fromSecretKey(Buffer.from(serumMarketKey)),
   });
 
   console.log(
@@ -140,7 +145,7 @@ export const deployLocalNet = async function (provider: anchor.Provider) {
     sundialMarket: sundialMarketBase.publicKey,
     reserveInfo,
     durationInSeconds: new BN(3600),
-    serumMarketKp: Keypair.fromSecretKey(Buffer.from(serumMarketKey2))
+    serumMarketKp: Keypair.fromSecretKey(Buffer.from(serumMarketKey2)),
   });
 
   console.log(
