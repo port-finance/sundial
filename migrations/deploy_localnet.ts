@@ -161,7 +161,7 @@ const createTokenAndMintToATA = async ({
       address,
       provider.wallet.publicKey,
       [],
-      1000000000000,
+      amount,
     ),
   ]);
   await moveToAtaTx.confirm();
