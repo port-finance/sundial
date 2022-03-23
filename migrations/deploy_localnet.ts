@@ -60,7 +60,7 @@ module.exports = async function (provider: anchor.Provider) {
   const lendingMarket = await createLendingMarket(provider);
   console.log('marketPublicKey: ', lendingMarket.publicKey.toString());
 
-  const [mintPubkey, address] = await createTokenAndMintToATA({
+  const [mintPubkey, vaultAddress] = await createTokenAndMintToATA({
     provider: solanaProvider,
     amount: mintAmount,
   });
@@ -68,7 +68,7 @@ module.exports = async function (provider: anchor.Provider) {
   const reserveState = await createDefaultReserve(
     provider,
     1,
-    address,
+    vaultAddress,
     lendingMarket.publicKey,
     DEFAULT_RESERVE_CONFIG,
   );
