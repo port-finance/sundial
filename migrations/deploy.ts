@@ -1,3 +1,3 @@
-import { deployLocalNet } from "./deployLocalNet";
+import { deployLocalNet } from './deployLocalNet';
 
-module.exports = deployLocalNet
+module.exports = deployLocalNet;
