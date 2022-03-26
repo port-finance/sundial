@@ -22,7 +22,6 @@ import {
   utils,
 } from '@project-serum/anchor';
 
-import { expectTX } from '@saberhq/chai-solana';
 import { SundialProfileWrapper, SundialWrapper } from './wrappers';
 import { SundialCollateralWrapper } from './wrappers';
 
@@ -191,7 +190,7 @@ export class SundialSDK {
       owner: owner ? owner : this.provider.wallet.publicKey,
       payer: this.provider.wallet.publicKey,
     });
-    await expectTX(tx, 'init sundial market').to.be.fulfilled;
+    tx.confirm();
     return sundialMarket;
   }
 }
