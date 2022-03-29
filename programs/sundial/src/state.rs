@@ -308,9 +308,15 @@ impl SundialProfile {
 
     #[inline(always)]
     pub fn check_if_unhealthy(&self) -> Result<bool, ProgramError> {
+        let risk_factor = log_then_prop_err!(self.risk_factor());
+        Ok(risk_factor >= Decimal::one())
+    }
+
+    #[inline(always)]
+    pub fn risk_factor(&self) -> Result<Decimal, ProgramError> {
         let liquidation_margin = log_then_prop_err!(self.get_liquidation_margin());
         let borrowed_value = log_then_prop_err!(self.get_borrowed_value());
-        Ok(borrowed_value >= liquidation_margin)
+        liquidation_margin.try_div(borrowed_value)
     }
 
     #[inline(always)]
