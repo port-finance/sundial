@@ -1,9 +1,6 @@
 # Ignore Mac OS noise
 .DS_Store
 
-# We have two deploy scripts
-migrations/deploy.ts
-
 # Ignore the build directory for Rust/Anchor
 target
 .idea
