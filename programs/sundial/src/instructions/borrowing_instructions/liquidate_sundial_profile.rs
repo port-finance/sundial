@@ -8,6 +8,7 @@ use sundial_derives::{validates, CheckSundialProfileStale};
 use itertools::Itertools;
 use paste::paste;
 use std::cmp::{max, min};
+use std::ops::Deref;
 
 use crate::helpers::create_transfer_cpi;
 use anchor_spl::token::transfer;
@@ -89,7 +90,7 @@ pub struct LiquidateSundialProfile<'info> {
 pub fn process_liquidate_sundial_profile(ctx: Context<LiquidateSundialProfile>) -> ProgramResult {
     let user_wallet = &ctx.accounts.user_repay_liquidity_wallet;
     let sundial_profile = &mut ctx.accounts.sundial_profile;
-
+    let sundial_profile_ptr = &**sundial_profile.deref().deref() as *const SundialProfile;
     let current_ts = ctx.accounts.clock.unix_timestamp;
     let no_overtime_loans = !sundial_profile
         .loans
@@ -107,6 +108,7 @@ pub fn process_liquidate_sundial_profile(ctx: Context<LiquidateSundialProfile>) 
 
     let sundial_key = ctx.accounts.sundial.key();
     let is_unhealthy = log_then_prop_err!(sundial_profile.check_if_unhealthy());
+    let risk_factor_before = log_then_prop_err!(sundial_profile.risk_factor());
 
     let allowed_repay_value_when_no_overtime = log_then_prop_err!(sundial_profile
         .get_borrowed_value()
@@ -154,31 +156,58 @@ pub fn process_liquidate_sundial_profile(ctx: Context<LiquidateSundialProfile>) 
         .liquidation_config
         .get_repay_value(available_withdraw_value));
 
-    let possible_repay_amount = log_then_prop_err!(loan_to_repay
+    let possible_repay_amount = min(max(1, log_then_prop_err!(loan_to_repay
         .asset
         .get_amount(min(allowed_repay_value, available_repay_value))
-        .and_then(|d| d.try_floor_u64()));
+        .and_then(|d| d.try_floor_u64()))), loan_to_repay.asset.amount);
 
-    let repay_amount = min(
-        min(max_repay_amount, possible_repay_amount),
-        loan_to_repay.asset.amount,
-    );
+    let user_repay_amount = min(max_repay_amount, possible_repay_amount);
 
-    let withdraw_value = log_then_prop_err!(collateral_to_withdraw
+    let user_withdraw_value = log_then_prop_err!(collateral_to_withdraw
         .config
         .liquidation_config
-        .get_liquidation_value(loan_to_repay.asset.get_value(repay_amount)?));
-    let withdraw_amount = log_then_prop_err!(collateral_to_withdraw
+        .get_liquidation_value(loan_to_repay.asset.get_value(user_repay_amount)?));
+    let user_withdraw_amount = log_then_prop_err!(collateral_to_withdraw
         .asset
-        .get_amount(withdraw_value)
+        .get_amount(user_withdraw_value)
         .and_then(|d| d.try_ceil_u64()));
 
-    if log_then_prop_err!(loan_to_repay.asset.reduce_amount(repay_amount)) == 0 {
+    let possible_withdraw_value = log_then_prop_err!(collateral_to_withdraw
+        .config
+        .liquidation_config
+        .get_liquidation_value(loan_to_repay.asset.get_value(possible_repay_amount)?));
+    let possible_withdraw_amount = log_then_prop_err!(collateral_to_withdraw
+        .asset
+        .get_amount(possible_withdraw_value)
+        .and_then(|d| d.try_ceil_u64()));
+
+    log_then_prop_err!(loan_to_repay.asset.reduce_amount(possible_repay_amount));
+    log_then_prop_err!(collateral_to_withdraw.asset.reduce_amount(possible_withdraw_amount));
+    let possible_risk_factor_after = unsafe {
+        log_then_prop_err!(sundial_profile_ptr.as_ref().unwrap().risk_factor())
+    };
+    let possible_reduce_risk_factor = possible_risk_factor_after <= risk_factor_before;
+
+    log_then_prop_err!(loan_to_repay.asset.add_amount(possible_repay_amount));
+    log_then_prop_err!(collateral_to_withdraw.asset.add_amount(possible_withdraw_amount));
+
+    if log_then_prop_err!(loan_to_repay.asset.reduce_amount(user_repay_amount)) == 0 {
         loans.remove(loan_pos);
     };
-    if log_then_prop_err!(collateral_to_withdraw.asset.reduce_amount(withdraw_amount)) == 0 {
+    if log_then_prop_err!(collateral_to_withdraw.asset.reduce_amount(user_withdraw_amount)) == 0 {
         collaterals.remove(collateral_pos);
     };
+
+    let risk_factor_after = log_then_prop_err!(sundial_profile.risk_factor());
+    vipers::invariant!(
+        is_loan_overtime || risk_factor_after <= risk_factor_before || !possible_reduce_risk_factor,
+        SundialError::InvalidLiquidation,
+        "The risk factor after liquidation is even greater than before, maybe try to liquidate more"
+    );
+
+    if is_loan_overtime {
+        panic!()
+    }
 
     log_then_prop_err!(transfer(
         create_transfer_cpi(
@@ -188,7 +217,7 @@ pub fn process_liquidate_sundial_profile(ctx: Context<LiquidateSundialProfile>) 
             &[],
             ctx.accounts.token_program.to_account_info(),
         ),
-        repay_amount
+        user_repay_amount
     ));
 
     log_then_prop_err!(transfer(
@@ -201,15 +230,15 @@ pub fn process_liquidate_sundial_profile(ctx: Context<LiquidateSundialProfile>) 
             seeds!(ctx, sundial_collateral, authority),
             ctx.accounts.token_program.to_account_info(),
         ),
-        withdraw_amount
+        user_withdraw_amount
     ));
 
     emit!(LiquidateSundialProfileEvent {
         profile: ctx.accounts.sundial_profile.key(),
         sundial_collateral: ctx.accounts.sundial_collateral.key(),
         sundial: ctx.accounts.sundial.key(),
-        repay_amount,
-        withdraw_amount,
+        repay_amount: user_repay_amount,
+        withdraw_amount: user_withdraw_amount,
         repay_mint: ctx.accounts.sundial_liquidity_wallet.mint,
         withdraw_mint: ctx.accounts.sundial_collateral.collateral_mint,
         user_wallet: ctx.accounts.user_repay_liquidity_wallet.owner

@@ -316,7 +316,13 @@ impl SundialProfile {
     pub fn risk_factor(&self) -> Result<Decimal, ProgramError> {
         let liquidation_margin = log_then_prop_err!(self.get_liquidation_margin());
         let borrowed_value = log_then_prop_err!(self.get_borrowed_value());
-        liquidation_margin.try_div(borrowed_value)
+        if borrowed_value == Decimal::zero() {
+            Ok(Decimal::zero())
+        } else if liquidation_margin == Decimal::zero() {
+            Ok(Decimal::from(u128::MAX))
+        } else {
+            borrowed_value.try_div(liquidation_margin)
+        }
     }
 
     #[inline(always)]
