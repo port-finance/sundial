@@ -195,6 +195,8 @@ pub fn process_liquidate_sundial_profile(ctx: Context<LiquidateSundialProfile>) 
     let possible_liquidation_margin = before_liquidation_margin
         .try_sub(possible_withdraw_value)?;
 
+    // In case: `loan_value * (1 + liquidation_bonus / 100) > collateral_value`, it will not be possible
+    // to enfore that risk factor will decrease, i.e. [Profile] becomes healthier.
     let is_possible_to_reduce_risk_factor =
         calculate_risk_factor(possible_borrowed_value, possible_liquidation_margin)? <= before_risk_factor;
 
