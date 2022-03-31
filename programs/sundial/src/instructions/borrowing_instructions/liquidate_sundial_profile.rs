@@ -1,5 +1,5 @@
 use crate::helpers::*;
-use crate::state::{Sundial, SundialCollateral, SundialProfile};
+use crate::state::{Sundial, SundialCollateral, SundialProfile, calculate_risk_factor};
 use anchor_lang::prelude::*;
 use anchor_spl::token::{Token, TokenAccount};
 
@@ -8,14 +8,13 @@ use sundial_derives::{validates, CheckSundialProfileStale};
 use itertools::Itertools;
 use paste::paste;
 use std::cmp::{max, min};
-use std::ops::Deref;
 
 use crate::helpers::create_transfer_cpi;
 use anchor_spl::token::transfer;
 
 use crate::error::SundialError;
 
-use solana_maths::{Decimal, Rate, TryMul, U192};
+use solana_maths::{Decimal, Rate, TryMul, U192, TrySub, TryDiv};
 
 /// Percentage of a [Profile] that can be repaid during
 /// each liquidation call due to price change
@@ -90,7 +89,6 @@ pub struct LiquidateSundialProfile<'info> {
 pub fn process_liquidate_sundial_profile(ctx: Context<LiquidateSundialProfile>) -> ProgramResult {
     let user_wallet = &ctx.accounts.user_repay_liquidity_wallet;
     let sundial_profile = &mut ctx.accounts.sundial_profile;
-    let sundial_profile_ptr = &**sundial_profile.deref().deref() as *const SundialProfile;
     let current_ts = ctx.accounts.clock.unix_timestamp;
     let no_overtime_loans = !sundial_profile
         .loans
@@ -108,12 +106,14 @@ pub fn process_liquidate_sundial_profile(ctx: Context<LiquidateSundialProfile>) 
 
     let sundial_key = ctx.accounts.sundial.key();
     let is_unhealthy = log_then_prop_err!(sundial_profile.check_if_unhealthy());
-    let risk_factor_before = log_then_prop_err!(sundial_profile.risk_factor());
+    let before_risk_factor = log_then_prop_err!(sundial_profile.risk_factor());
 
     let allowed_repay_value_when_no_overtime = log_then_prop_err!(sundial_profile
         .get_borrowed_value()
         .and_then(|d| d.try_mul(Rate::from_percent(LIQUIDATION_CLOSE_FACTOR))));
 
+    let before_liquidation_margin = log_then_prop_err!(sundial_profile.get_liquidation_margin());
+    let before_borrowed_value = log_then_prop_err!(sundial_profile.get_borrowed_value());
     let (collaterals, loans) = sundial_profile.get_mut_collaterals_and_loans();
     let (loan_pos, loan_to_repay) = vipers::unwrap_opt!(
         loans.iter_mut().find_position(|l| l.sundial == sundial_key),
@@ -187,17 +187,16 @@ pub fn process_liquidate_sundial_profile(ctx: Context<LiquidateSundialProfile>) 
         .get_amount(possible_withdraw_value)
         .and_then(|d| d.try_ceil_u64()));
 
-    let tmp_loan = loan_to_repay.clone();
-    let tmp_collateral = collateral_to_withdraw.clone();
-    log_then_prop_err!(loan_to_repay.asset.reduce_amount(possible_repay_amount));
-    log_then_prop_err!(collateral_to_withdraw
-        .asset
-        .reduce_amount(possible_withdraw_amount));
-    let possible_risk_factor_after =
-        unsafe { log_then_prop_err!(sundial_profile_ptr.as_ref().unwrap().risk_factor()) };
-    let possible_reduce_risk_factor = possible_risk_factor_after <= risk_factor_before;
-    loan_to_repay.asset = tmp_loan.asset;
-    collateral_to_withdraw.asset = tmp_collateral.asset;
+    let collateral_value = collateral_to_withdraw.asset.get_value(possible_withdraw_amount)?;
+    let loan_value = loan_to_repay.asset.get_value(possible_repay_amount)?;
+
+    let after_borrowed_value = before_borrowed_value
+        .try_sub(loan_value)?;
+    let after_liquidation_margin = before_liquidation_margin
+        .try_sub(collateral_value)?;
+
+    let is_risk_factor_reduced =
+        calculate_risk_factor(after_borrowed_value, after_liquidation_margin)? <= before_risk_factor;
 
     if log_then_prop_err!(loan_to_repay.asset.reduce_amount(user_repay_amount)) == 0 {
         loans.remove(loan_pos);
@@ -212,7 +211,7 @@ pub fn process_liquidate_sundial_profile(ctx: Context<LiquidateSundialProfile>) 
 
     let risk_factor_after = log_then_prop_err!(sundial_profile.risk_factor());
     vipers::invariant!(
-        is_loan_overtime || risk_factor_after <= risk_factor_before || !possible_reduce_risk_factor,
+        is_loan_overtime || risk_factor_after <= before_risk_factor || !is_risk_factor_reduced,
         SundialError::InvalidLiquidation,
         "The risk factor after liquidation is even greater than before, maybe try to liquidate more"
     );
