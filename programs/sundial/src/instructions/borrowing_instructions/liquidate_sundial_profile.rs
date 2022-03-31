@@ -190,13 +190,13 @@ pub fn process_liquidate_sundial_profile(ctx: Context<LiquidateSundialProfile>) 
     let collateral_value = collateral_to_withdraw.asset.get_value(possible_withdraw_amount)?;
     let loan_value = loan_to_repay.asset.get_value(possible_repay_amount)?;
 
-    let after_borrowed_value = before_borrowed_value
+    let possible_borrowed_value = before_borrowed_value
         .try_sub(loan_value)?;
-    let after_liquidation_margin = before_liquidation_margin
+    let possible_liquidation_margin = before_liquidation_margin
         .try_sub(collateral_value)?;
 
-    let is_risk_factor_reduced =
-        calculate_risk_factor(after_borrowed_value, after_liquidation_margin)? <= before_risk_factor;
+    let is_possible_to_reduce_risk_factor =
+        calculate_risk_factor(possible_borrowed_value, possible_liquidation_margin)? <= before_risk_factor;
 
     if log_then_prop_err!(loan_to_repay.asset.reduce_amount(user_repay_amount)) == 0 {
         loans.remove(loan_pos);
@@ -211,7 +211,7 @@ pub fn process_liquidate_sundial_profile(ctx: Context<LiquidateSundialProfile>) 
 
     let risk_factor_after = log_then_prop_err!(sundial_profile.risk_factor());
     vipers::invariant!(
-        is_loan_overtime || risk_factor_after <= before_risk_factor || !is_risk_factor_reduced,
+        is_loan_overtime || risk_factor_after <= before_risk_factor || !is_possible_to_reduce_risk_factor,
         SundialError::InvalidLiquidation,
         "The risk factor after liquidation is even greater than before, maybe try to liquidate more"
     );
