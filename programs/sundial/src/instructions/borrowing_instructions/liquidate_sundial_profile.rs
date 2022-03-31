@@ -178,17 +178,11 @@ pub fn process_liquidate_sundial_profile(ctx: Context<LiquidateSundialProfile>) 
         .get_amount(user_withdraw_value)
         .and_then(|d| d.try_ceil_u64()));
 
+    let possible_repay_value = loan_to_repay.asset.get_value(possible_repay_amount)?;
     let possible_withdraw_value = log_then_prop_err!(collateral_to_withdraw
         .config
         .liquidation_config
-        .get_liquidation_value(loan_to_repay.asset.get_value(possible_repay_amount)?));
-    let possible_withdraw_amount = log_then_prop_err!(collateral_to_withdraw
-        .asset
-        .get_amount(possible_withdraw_value)
-        .and_then(|d| d.try_ceil_u64()));
-
-    let possible_withdraw_value = collateral_to_withdraw.asset.get_value(possible_withdraw_amount)?;
-    let possible_repay_value = loan_to_repay.asset.get_value(possible_repay_amount)?;
+        .get_liquidation_value(possible_repay_value));
 
     let possible_borrowed_value = before_borrowed_value
         .try_sub(possible_repay_value)?;
