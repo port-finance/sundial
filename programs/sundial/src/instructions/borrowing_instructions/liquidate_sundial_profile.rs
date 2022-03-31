@@ -211,9 +211,9 @@ pub fn process_liquidate_sundial_profile(ctx: Context<LiquidateSundialProfile>) 
         collaterals.remove(collateral_pos);
     };
 
-    let risk_factor_after = log_then_prop_err!(sundial_profile.risk_factor());
+    let after_risk_factor = log_then_prop_err!(sundial_profile.risk_factor());
     vipers::invariant!(
-        is_loan_overtime || risk_factor_after <= before_risk_factor || !is_possible_to_reduce_risk_factor,
+        is_loan_overtime || after_risk_factor <= before_risk_factor || !is_possible_to_reduce_risk_factor,
         SundialError::InvalidLiquidation,
         "The risk factor after liquidation is even greater than before, maybe try to liquidate more"
     );
