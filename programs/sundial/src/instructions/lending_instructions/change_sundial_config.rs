@@ -1,5 +1,5 @@
 use crate::helpers::*;
-use crate::state::Sundial;
+use crate::state::{Fee, LiquidityCap, Sundial};
 use crate::state::SundialConfig;
 use crate::state::SundialMarket;
 use anchor_lang::prelude::*;
@@ -25,7 +25,15 @@ pub fn process_change_sundial_config(
     ctx: Context<ChangeSundialConfig>,
     config: SundialInitConfigParams,
 ) -> ProgramResult {
-    ctx.accounts.sundial.config = config.into();
+    ctx.accounts.sundial.config.lending_fee = Fee{
+        bips: config.lending_fee,
+    };
+    ctx.accounts.sundial.config.borrow_fee = Fee {
+        bips: config.borrow_fee,
+    };
+    ctx.accounts.sundial.config.liquidity_cap = LiquidityCap {
+        lamports: config.liquidity_cap,
+    };
     emit!(ChangeSundialConfigEvent {
         sundial: ctx.accounts.sundial.key(),
         config: ctx.accounts.sundial.config.clone(),
