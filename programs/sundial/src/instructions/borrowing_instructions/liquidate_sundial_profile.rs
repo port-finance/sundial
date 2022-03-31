@@ -14,7 +14,7 @@ use anchor_spl::token::transfer;
 
 use crate::error::SundialError;
 
-use solana_maths::{Decimal, Rate, TryMul, U192, TrySub, TryDiv};
+use solana_maths::{Decimal, Rate, TryMul, U192, TrySub};
 
 /// Percentage of a [Profile] that can be repaid during
 /// each liquidation call due to price change
