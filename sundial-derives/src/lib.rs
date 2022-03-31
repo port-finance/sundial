@@ -144,7 +144,7 @@ fn has_field(struct_input: &Data, field_name: &str) -> bool {
         if let Named(ref fields) = data.fields {
             for field in fields.named.iter() {
                 if let Some(ident) = field.ident.clone() {
-                    if ident.to_string() == field_name {
+                    if ident == field_name {
                         return true;
                     }
                 }
