@@ -120,12 +120,14 @@ pub fn process_deposit_and_mint_tokens(
 
     log_then_prop_err!(ctx.accounts.sundial_port_lp_wallet.reload());
 
-    // We calculate how much liquidity is deposited if we deposit it at the very beginning of [Sundial].
-    let principal_token_amount = start_exchange_rate.collateral_to_liquidity(unwrap_int!(ctx
+    let current_lp_amount = ctx
         .accounts
         .sundial_port_lp_wallet
-        .amount
-        .checked_sub(existed_lp_amount)))?;
+        .amount;
+
+    // We calculate how much liquidity is deposited if we deposit it at the very beginning of [Sundial].
+    let principal_token_amount = start_exchange_rate.collateral_to_liquidity(unwrap_int!(
+        current_lp_amount.checked_sub(existed_lp_amount)))?;
 
     let fee = &sundial.config.lending_fee;
     let fee_amount = log_then_prop_err!(fee.mint_fee(
@@ -158,7 +160,7 @@ pub fn process_deposit_and_mint_tokens(
             seeds!(ctx, sundial, authority),
             ctx.accounts.token_program.to_account_info(),
         ),
-        amount
+        principal_token_amount
     ));
 
     let liquidity_cap = &sundial.config.liquidity_cap;
