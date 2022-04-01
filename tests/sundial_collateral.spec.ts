@@ -50,11 +50,7 @@ import {
 } from '@port.finance/port-sdk';
 import { expectTX } from '@saberhq/chai-solana';
 import { assert, expect } from 'chai';
-import {
-  getATAAddress,
-  getOrCreateATA,
-  MAX_U64,
-} from '@saberhq/token-utils';
+import { getATAAddress, getOrCreateATA, MAX_U64 } from '@saberhq/token-utils';
 import { TransactionEnvelope } from '@saberhq/solana-contrib';
 import { Big } from 'big.js';
 import {
