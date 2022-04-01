@@ -32,9 +32,9 @@ import {
   ReserveState,
 } from './utils';
 import {
-  createAccountRentExempt,
-  createMintAndVault,
-  sleep,
+    createAccountRentExempt,
+    createMintAndVault, createTokenAccount,
+    sleep,
 } from '@project-serum/common';
 import {
   initObligationInstruction,
@@ -49,7 +49,7 @@ import {
 } from '@port.finance/port-sdk';
 import { expectTX } from '@saberhq/chai-solana';
 import { assert, expect } from 'chai';
-import { getATAAddress, getOrCreateATA, MAX_U64 } from '@saberhq/token-utils';
+import {getATAAddress, getOrCreateATA, MAX_U64, SPLToken} from '@saberhq/token-utils';
 import { TransactionEnvelope } from '@saberhq/solana-contrib';
 import { Big } from 'big.js';
 import {
@@ -62,6 +62,8 @@ import {
   WAD,
 } from '../src';
 import invariant from 'tiny-invariant';
+import {Token} from "@solana/spl-token";
+import {transfer} from "@project-serum/serum/lib/token-instructions";
 
 describe('SundialCollateral', () => {
   setProvider(Provider.local());
@@ -397,15 +399,16 @@ describe('SundialCollateral', () => {
             await sundialCollateralWrapper.refreshSundialCollateral(
               parsedReserve,
             ),
-          ).to.be.fulfilled;
-          await expectTX(
-            await sundialProfileWrapper.refreshSundialProfile(),
-            'RefreshSundialCollateral',
+              "Refresh Sundial Collateral"
           ).to.be.fulfilled;
           await sundialCollateralWrapper.reloadData();
         },
       ),
     );
+    await expectTX(
+        await sundialProfileWrapper.refreshSundialProfile(),
+        'RefreshSundialProfile',
+    ).to.be.fulfilled;
     await sundialProfileWrapper.reloadData();
   };
 
@@ -1684,6 +1687,82 @@ describe('SundialCollateral', () => {
       ),
     ).to.be.rejected;
     await sundialProfileWrapper.reloadData();
+  });
+
+
+  it('Liquidation (Forbid utilizing precision ceiling to liquidate more)', async () => {
+    const updatedUSDCPrice = SERUM_PRICE;
+    const updatedSERUMPrice = new BN(10_000_000)
+    await mockOraclesWrapper.writePythPrice(serumOracleKP, {
+        price: updatedSERUMPrice,
+        slot: new BN(await provider.connection.getSlot()),
+    });
+    const repayUSDCAccount = await createTokenAccount(
+        provider,
+        USDCMint,
+        provider.wallet.publicKey
+    );
+    const depositAmount = new BN(10000)
+    const transferIns =  transfer({source: usdcVault, destination:repayUSDCAccount, amount:1 , owner: provider.wallet.publicKey});
+    const tx = new TransactionEnvelope(sdk.provider, [transferIns]);
+    await expectTX(tx, 'transfer some fund to liquidity wallet').to.be.fulfilled;
+    await refreshThenDeposit(
+        depositAmount,
+        sundialSerumCollateralWrapper,
+        [sundialSerumCollateralWrapper, parsedSerumReserve],
+        [sundialSolCollateralWrapper, parsedSolReserve],
+    );
+    const liquidationThresholdValueWads =
+        sundialProfileWrapper.getLiquidationThreshold();
+    const loanValueWads = sundialProfileWrapper.getTotalLoanValue();
+    const mintAmount = divCeil(
+        liquidationThresholdValueWads.sub(loanValueWads),
+        updatedUSDCPrice.mul(WAD),
+    );
+
+    await refreshThenMint(
+        mintAmount,
+        sundialUSDCWrapper,
+        [sundialSerumCollateralWrapper, parsedSerumReserve],
+        [sundialSolCollateralWrapper, parsedSolReserve],
+    );
+    await mockOraclesWrapper.writePythPrice(usdcOracleKP, {
+        price: updatedUSDCPrice,
+        slot: new BN(await provider.connection.getSlot()),
+    });
+    await refreshProfile(
+        [sundialSerumCollateralWrapper, parsedSerumReserve],
+        [sundialSolCollateralWrapper, parsedSolReserve],
+    );
+
+    const liquidateTx = await sundialProfileWrapper.liquidateSundialProfile(
+        sundialSerumCollateralWrapper,
+        sundialUSDCWrapper,
+        repayUSDCAccount,
+    );
+    await expectTX(liquidateTx, 'liquidate').to.be.rejected;
+    await mockOraclesWrapper.writePythPrice(usdcOracleKP, {
+        price: USDC_PRICE,
+        slot: new BN(await provider.connection.getSlot()),
+    });
+    await mockOraclesWrapper.writePythPrice(serumOracleKP, {
+        price: SERUM_PRICE,
+        slot: new BN(await provider.connection.getSlot()),
+    });
+    await refreshProfile(
+        [sundialSerumCollateralWrapper, parsedSerumReserve],
+        [sundialSolCollateralWrapper, parsedSolReserve],
+    );
+    expectTX(await sundialProfileWrapper.repaySundialLiquidity(
+        mintAmount,
+        sundialUSDCWrapper,
+        usdcVault
+    )).to.be.fulfilled;
+    expectTX(await sundialProfileWrapper.withdrawSundialCollateral(
+        depositAmount,
+        sundialSerumCollateralWrapper,
+        serumVault
+    )).to.be.fulfilled;
   });
 
   it('Change Sundial Collateral Config', async () => {
