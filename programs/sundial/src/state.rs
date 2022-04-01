@@ -342,7 +342,10 @@ impl Default for SundialProfile {
     }
 }
 
-pub fn calculate_risk_factor(borrowed_value: Decimal, liquidation_margin: Decimal)-> Result<Decimal, ProgramError> {
+pub fn calculate_risk_factor(
+    borrowed_value: Decimal,
+    liquidation_margin: Decimal,
+) -> Result<Decimal, ProgramError> {
     if borrowed_value == Decimal::zero() {
         Ok(Decimal::zero())
     } else if liquidation_margin == Decimal::zero() {

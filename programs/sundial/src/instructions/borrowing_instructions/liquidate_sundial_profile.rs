@@ -1,5 +1,5 @@
 use crate::helpers::*;
-use crate::state::{Sundial, SundialCollateral, SundialProfile, calculate_risk_factor};
+use crate::state::{calculate_risk_factor, Sundial, SundialCollateral, SundialProfile};
 use anchor_lang::prelude::*;
 use anchor_spl::token::{Token, TokenAccount};
 
@@ -14,7 +14,7 @@ use anchor_spl::token::transfer;
 
 use crate::error::SundialError;
 
-use solana_maths::{Decimal, Rate, TryMul, U192, TrySub};
+use solana_maths::{Decimal, Rate, TryMul, TrySub, U192};
 
 /// Percentage of a [Profile] that can be repaid during
 /// each liquidation call due to price change
@@ -184,15 +184,14 @@ pub fn process_liquidate_sundial_profile(ctx: Context<LiquidateSundialProfile>) 
         .liquidation_config
         .get_liquidation_value(possible_repay_value));
 
-    let possible_borrowed_value = before_borrowed_value
-        .try_sub(possible_repay_value)?;
-    let possible_liquidation_margin = before_liquidation_margin
-        .try_sub(possible_withdraw_value)?;
+    let possible_borrowed_value = before_borrowed_value.try_sub(possible_repay_value)?;
+    let possible_liquidation_margin = before_liquidation_margin.try_sub(possible_withdraw_value)?;
 
     // In case: `loan_value * (1 + liquidation_bonus / 100) > collateral_value`, it will not be possible
     // to enfore that risk factor will decrease, i.e. [Profile] becomes healthier.
     let is_possible_to_reduce_risk_factor =
-        calculate_risk_factor(possible_borrowed_value, possible_liquidation_margin)? <= before_risk_factor;
+        calculate_risk_factor(possible_borrowed_value, possible_liquidation_margin)?
+            <= before_risk_factor;
 
     if log_then_prop_err!(loan_to_repay.asset.reduce_amount(user_repay_amount)) == 0 {
         loans.remove(loan_pos);
