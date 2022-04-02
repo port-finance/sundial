@@ -211,9 +211,7 @@ describe('Sundial Interacting with Port Reserve that has positive APY', () => {
     expect(principleWallet.amount.add(fee)).to.bignumber.eq(yieldWallet.amount);
     expect(principleWallet.amount.add(fee)).to.bignumber.lt(amount);
     // We use yield token amount since we don't charge fee on that.
-    expect(amount.sub(yieldWallet.amount).toNumber()).gt(
-      interestAccrue,
-    );
+    expect(amount.sub(yieldWallet.amount).toNumber()).gt(interestAccrue);
   });
 
   it('should fail minting principle and yield tokens', async () => {
