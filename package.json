@@ -6,6 +6,9 @@
   "module": "dist/esm/index.js",
   "license": "AGPL-3.0",
   "repository": "git@github.com:port-finance/sundial.git",
+  "engines": {
+    "node": ">=15.0.0"
+  },
   "scripts": {
     "idl:generate": "./scripts/parse-idls.sh && ./scripts/generate-idl-types.sh",
     "build": "rm -fr dist/ && tsc -P tsconfig.build.json && tsc -P tsconfig.esm.json",
