@@ -210,9 +210,8 @@ describe('Sundial Interacting with Port Reserve that has positive APY', () => {
     );
     expect(principleWallet.amount.add(fee)).to.bignumber.eq(yieldWallet.amount);
     expect(principleWallet.amount.add(fee)).to.bignumber.lt(amount);
-    expect(yieldWallet.amount.sub(principleWallet.amount).toNumber()).gt(
-      interestAccrue,
-    );
+    // We use yield token amount since we don't charge fee on that.
+    expect(amount.sub(yieldWallet.amount).toNumber()).gt(interestAccrue);
   });
 
   it('should fail minting principle and yield tokens', async () => {
@@ -274,6 +273,7 @@ describe('Sundial Interacting with Port Reserve that has positive APY', () => {
     expect(
       userLiquidityWallet.amount.sub(beforeRedeemAmount),
     ).to.bignumber.equal(
+      // Subtract 1 since when we calculate the principal token amount we use flooring.
       amount.sub(new BN(1)).sub(principleWallet.amount).sub(fee),
     );
   });
