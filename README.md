@@ -54,6 +54,7 @@ The value of collateral you get will be `the value of the loan you repay` \* (10
 
 ### Version Requirements
 
+- Nodejs > `v15.0`
 - Anchor `v0.18.0`
 - Solana `v1.7.8`
 
