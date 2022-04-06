@@ -208,11 +208,10 @@ describe('Sundial Interacting with Port Reserve that has positive APY', () => {
     expect(liquidityWallet.amount.toString()).equal(
       expectedRemainingLiquidity.toString(),
     );
-    expect(principleWallet.amount.add(fee)).to.bignumber.lt(yieldWallet.amount);
-    expect(yieldWallet.amount.sub(principleWallet.amount).toNumber()).gt(
-      interestAccrue,
-    );
-    expect(yieldWallet.amount.toString()).equal(amount.toString());
+    expect(principleWallet.amount.add(fee)).to.bignumber.eq(yieldWallet.amount);
+    expect(principleWallet.amount.add(fee)).to.bignumber.lt(amount);
+    // We use yield token amount since we don't charge fee on that.
+    expect(amount.sub(yieldWallet.amount).toNumber()).gt(interestAccrue);
   });
 
   it('should fail minting principle and yield tokens', async () => {
@@ -265,7 +264,7 @@ describe('Sundial Interacting with Port Reserve that has positive APY', () => {
       beforeRedeemAmount,
     );
     const redeemYieldTokenTx = await sundialWrapper.redeemYieldTokens({
-      amount,
+      amount: yieldWallet.amount,
       userLiquidityWallet: liquidityVault,
     });
     await expectTX(redeemYieldTokenTx, 'redeem yield token').to.be.fulfilled;
@@ -274,7 +273,8 @@ describe('Sundial Interacting with Port Reserve that has positive APY', () => {
     expect(
       userLiquidityWallet.amount.sub(beforeRedeemAmount),
     ).to.bignumber.equal(
-      yieldWallet.amount.sub(principleWallet.amount).sub(fee),
+      // Subtract 1 since when we calculate the principal token amount we use flooring.
+      amount.sub(new BN(1)).sub(principleWallet.amount).sub(fee),
     );
   });
 
