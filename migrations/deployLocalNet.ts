@@ -163,8 +163,11 @@ export const deployLocalNet = async function (provider: anchor.Provider) {
     sundialMarket: sundialMarketBase.publicKey.toString(),
     principalMint: principalMint.toString(),
     liquidityMint: mintPubkey.toString(),
-    reserveState: reserveState.address.toString(),
+    sundialKey: sundialKey.toString(),
     serumMarket: serumMarket.toString(),
+    sundialKey2: sundialKey2.toString(),
+    serumMarket2: serumMarket2.toString(),
+    reserveState: reserveState.address.toString(),
     oraclePriv: Array.from(usdcOracleKP.secretKey),
   });
   await fsPromises.writeFile(JSON_OUTPUT_FILE, jsonLog);
