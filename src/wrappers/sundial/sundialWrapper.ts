@@ -24,13 +24,14 @@ const PORT_LENDING = new PublicKey(
   'Port7uDYB3wk6GJAw4KT1WpTeMtSu9bTcChBHkX2LfR',
 );
 
+const SUNDIAL_STR = 'sundial';
 function divCeiln(dividend: BN, divisor: number): BN {
   return dividend.addn(divisor - 1).divn(divisor);
 }
 
 export class SundialWrapper extends SundialAccountWrapper {
   constructor(sdk: SundialSDK) {
-    super(sdk, 'sundial');
+    super(sdk, SUNDIAL_STR);
   }
 
   public getBorrowFee(borrowAmount: BN) {
@@ -55,7 +56,7 @@ export class SundialWrapper extends SundialAccountWrapper {
       [
         sundialMarket.toBytes(),
         utils.bytes.utf8.encode(name),
-        utils.bytes.utf8.encode('sundial'),
+        utils.bytes.utf8.encode(SUNDIAL_STR),
       ],
       SUNDIAL_ADDRESSES.Sundial,
     );
