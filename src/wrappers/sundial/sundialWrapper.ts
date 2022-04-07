@@ -52,7 +52,11 @@ export class SundialWrapper extends SundialAccountWrapper {
     sundialMarket: PublicKey,
   ): Promise<[PublicKey, number]> {
     return await PublicKey.findProgramAddress(
-      [sundialMarket.toBytes(), utils.bytes.utf8.encode(name)],
+      [
+        sundialMarket.toBytes(),
+        utils.bytes.utf8.encode(name),
+        utils.bytes.utf8.encode('sundial'),
+      ],
       SUNDIAL_ADDRESSES.Sundial,
     );
   }
