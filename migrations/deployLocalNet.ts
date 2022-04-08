@@ -156,7 +156,9 @@ export const deployLocalNet = async function (provider: anchor.Provider) {
   );
 
   const [principalMint] = await sundialSDK.getPrincipleMintAndBump(sundialKey);
-  const [principalMint2] = await sundialSDK.getPrincipleMintAndBump(sundialKey2);
+  const [principalMint2] = await sundialSDK.getPrincipleMintAndBump(
+    sundialKey2,
+  );
 
   const jsonLog = JSON.stringify({
     provider: provider.wallet.publicKey.toString(),
