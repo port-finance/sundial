@@ -156,12 +156,14 @@ export const deployLocalNet = async function (provider: anchor.Provider) {
   );
 
   const [principalMint] = await sundialSDK.getPrincipleMintAndBump(sundialKey);
+  const [principalMint2] = await sundialSDK.getPrincipleMintAndBump(sundialKey2);
 
   const jsonLog = JSON.stringify({
     provider: provider.wallet.publicKey.toString(),
     lendingMarket: lendingMarket.publicKey.toString(),
     sundialMarket: sundialMarketBase.publicKey.toString(),
     principalMint: principalMint.toString(),
+    principalMint2: principalMint2.toString(),
     liquidityMint: mintPubkey.toString(),
     sundialKey: sundialKey.toString(),
     serumMarket: serumMarket.toString(),
