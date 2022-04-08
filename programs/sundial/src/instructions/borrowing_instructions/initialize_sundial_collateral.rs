@@ -95,7 +95,7 @@ impl From<SundialCollateralConfigParams> for SundialCollateralConfig {
             liquidity_cap: LiquidityCap {
                 lamports: config.liquidity_cap,
             },
-            ..SundialCollateralConfig::default()
+            collateral_decimals: 0,
         }
     }
 }

@@ -27,7 +27,8 @@ impl From<SundialInitConfigParams> for SundialConfig {
             liquidity_cap: LiquidityCap {
                 lamports: config.liquidity_cap,
             },
-            ..SundialConfig::default()
+            liquidity_decimals: 0,
+            _config_padding: [0; 5],
         }
     }
 }
@@ -49,7 +50,8 @@ pub struct InitializeSundial<'info> {
         payer = owner,
         seeds = [
             sundial_market.key().as_ref(),
-            name.as_ref()
+            name.as_ref(),
+            b"sundial"
         ],
         bump = pda_bump
     )]
