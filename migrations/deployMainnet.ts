@@ -8,6 +8,13 @@ import {
   ReserveParser,
 } from '@port.finance/port-sdk';
 import { setupSundialAndSerumMarket } from './deployLocalNet';
+import {
+  ADMIN,
+  BASE_MARKET_KEY,
+  PYTH_USDC_PRICE_ACCOUNT,
+  USDC_MINT_PUB_KEY,
+  USDC_RESERVE_PUB_KEY,
+} from './utils';
 
 const DAY_IN_SECS = 24 * 60 * 60;
 const MONTH_IN_SECS = 30 * DAY_IN_SECS;
@@ -23,45 +30,39 @@ export const deployMainnet = async function (provider) {
     provider: solanaProvider,
   });
 
-  const reservePubkey = new PublicKey(
-    'DcENuKuYd6BWGhKfGr7eARxodqG12Bz1sN5WA8NwvLRx',
-  );
+  console.log('Fetching Reserve Info...');
   const raw = {
-    pubkey: reservePubkey,
-    account: await provider.connection.getAccountInfo(reservePubkey),
+    pubkey: USDC_RESERVE_PUB_KEY,
+    account: await provider.connection.getAccountInfo(USDC_RESERVE_PUB_KEY),
   };
   const reserveInfo = ReserveParser(raw) as ParsedAccount<ReserveData>;
 
-  const sundialMarketBase = Keypair.generate();
   const serumMarketKp = Keypair.generate();
+  const sundialMarketKp = Keypair.fromSecretKey(Buffer.from(BASE_MARKET_KEY));
   const createMarketTx = await sundialSDK.getCreateSundialMarketTx({
-    sundialMarketBase,
-    owner: provider.wallet.publicKey,
+    sundialMarketBase: sundialMarketKp,
+    owner: ADMIN,
     payer: provider.wallet.publicKey,
   });
+
+  console.log('Creating Sundial Market...');
   await createMarketTx.confirm();
   const sundialName = 'USDC - July 2022';
-  const usdcOraclePubKey = new PublicKey(
-    'Gnt27xtC473ZT2Mw5u8wZ68Z3gULkSTb5DuxJy7eJotD',
-  );
-  const usdcMintPubkey = new PublicKey(
-    'EPjFWdd5AufqSSqeM2qN1xzybapC8G4wEGGkZwyTDt1v',
-  );
+
+  console.log('Setting up Sundial and Serum market...');
   const [sundialKey, serumMarket] = await setupSundialAndSerumMarket({
     provider: solanaProvider,
     sundialName,
     sundialSDK,
-    mintPubkey: usdcMintPubkey,
-    oraclePubkey: usdcOraclePubKey,
-    sundialMarket: sundialMarketBase.publicKey,
+    mintPubkey: USDC_MINT_PUB_KEY,
+    oraclePubkey: PYTH_USDC_PRICE_ACCOUNT,
+    sundialMarket: sundialMarketKp.publicKey,
     reserveInfo,
     serumMarketKp,
     durationInSeconds: new anchor.BN(3 * MONTH_IN_SECS),
     shouldPlaceOrder: false,
   });
-  console.log(
-    'sundialKeypair publicKey: ',
-    sundialKey.toString(),
-    serumMarket.toString(),
-  );
+
+  console.log('Sundial Key: ', sundialKey.toString());
+  console.log('Serum market: ', serumMarket.toString());
 };
