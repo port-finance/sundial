@@ -11,6 +11,7 @@ import { setupSundialAndSerumMarket } from './deployLocalNet';
 
 const DAY_IN_SECS = 24 * 60 * 60;
 const MONTH_IN_SECS = 30 * DAY_IN_SECS;
+const ADMIN = new PublicKey('J97XsFfGVkyi1uwy1wBnpJT9mB2KRbF8PZqnd3RihTbr');
 
 export const deployMainnet = async function (provider) {
   anchor.setProvider(provider);
@@ -36,7 +37,7 @@ export const deployMainnet = async function (provider) {
   const serumMarketKp = Keypair.generate();
   const createMarketTx = await sundialSDK.getCreateSundialMarketTx({
     sundialMarketBase,
-    owner: provider.wallet.publicKey,
+    owner: ADMIN,
     payer: provider.wallet.publicKey,
   });
   await createMarketTx.confirm();
