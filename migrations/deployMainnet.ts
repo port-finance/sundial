@@ -30,7 +30,7 @@ export const deployMainnet = async function (provider) {
     provider: solanaProvider,
   });
 
-  console.log('Fetching Reserve Info...')
+  console.log('Fetching Reserve Info...');
   const raw = {
     pubkey: USDC_RESERVE_PUB_KEY,
     account: await provider.connection.getAccountInfo(USDC_RESERVE_PUB_KEY),
@@ -48,6 +48,7 @@ export const deployMainnet = async function (provider) {
   console.log('Creating Sundial Market...');
   await createMarketTx.confirm();
   const sundialName = 'USDC - July 2022';
+
   console.log('Setting up Sundial and Serum market...');
   const [sundialKey, serumMarket] = await setupSundialAndSerumMarket({
     provider: solanaProvider,

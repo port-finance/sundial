@@ -246,6 +246,7 @@ export const setupSundialAndSerumMarket = async ({
     lendingFeeInBips: 10,
     borrowingFeeInBips: 50,
   });
+  console.log('Setting up Sundial market...');
   await createSundialTx.confirm();
 
   const [sundialId] = await SundialWrapper.getSundialKeyAndBump(
@@ -254,6 +255,7 @@ export const setupSundialAndSerumMarket = async ({
   );
   const [principalMint] = await sundialSDK.getPrincipleMintAndBump(sundialId);
 
+  console.log('Setting up Serum market...');
   const serumMarket = await setupSerumMarket({
     provider,
     baseMint: principalMint,
