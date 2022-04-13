@@ -62,7 +62,7 @@ export const deployMainnet = async function (provider) {
   });
 
   console.log(
-    'sundialKeypair publicKey: ',
+    'Sundial Public Keys: ',
     sundialKey.toString(),
     serumMarket.toString(),
   );
