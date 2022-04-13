@@ -1,6 +1,3 @@
-// Migrations are an early feature. Currently, they're nothing more than this
-// single deploy script that's invoked from the CLI, injecting a provider
-// configured from the workspace's Anchor.toml.
 import * as anchor from '@project-serum/anchor';
 import { SolanaProvider } from '@saberhq/solana-contrib';
 import { SundialSDK } from '../src';
@@ -10,17 +7,15 @@ import {
   ReserveData,
   ReserveParser,
 } from '@port.finance/port-sdk';
-import { BN } from '@project-serum/anchor';
-import { MAX_U64 } from '@saberhq/token-utils';
+import { setupSundialAndSerumMarket } from './deployLocalNet';
 
 const DAY_IN_SECS = 24 * 60 * 60;
 const MONTH_IN_SECS = 30 * DAY_IN_SECS;
 
 export const deployMainnet = async function (provider) {
   anchor.setProvider(provider);
-  const solanaProvider = SolanaProvider.load({
+  const solanaProvider = SolanaProvider.init({
     connection: provider.connection,
-    sendConnection: provider.connection,
     wallet: provider.wallet,
     opts: provider.opts,
   });
@@ -36,29 +31,37 @@ export const deployMainnet = async function (provider) {
     account: await provider.connection.getAccountInfo(reservePubkey),
   };
   const reserveInfo = ReserveParser(raw) as ParsedAccount<ReserveData>;
-  const sundialKeypair = Keypair.generate();
+
   const sundialMarketBase = Keypair.generate();
-  const createMarketTx = await sundialSDK.sundialWrapper.createSundialMarket({
+  const serumMarketKp = Keypair.generate();
+  const createMarketTx = await sundialSDK.getCreateSundialMarketTx({
     sundialMarketBase,
     owner: provider.wallet.publicKey,
     payer: provider.wallet.publicKey,
   });
-  createMarketTx.confirm();
-  const createTx = await sundialSDK.sundialWrapper.createSundial({
-    sundialBase: sundialKeypair.publicKey,
-    owner: provider.wallet.publicKey,
-    durationInSeconds: new anchor.BN(3 * MONTH_IN_SECS), // 3 months
-    liquidityMint: new PublicKey(
-      'EPjFWdd5AufqSSqeM2qN1xzybapC8G4wEGGkZwyTDt1v',
-    ),
-    oracle: PublicKey.default,
+  await createMarketTx.confirm();
+  const sundialName = 'USDC - July 2022';
+  const usdcOraclePubKey = new PublicKey(
+    'Gnt27xtC473ZT2Mw5u8wZ68Z3gULkSTb5DuxJy7eJotD',
+  );
+  const usdcMintPubkey = new PublicKey(
+    'EPjFWdd5AufqSSqeM2qN1xzybapC8G4wEGGkZwyTDt1v',
+  );
+  const [sundialKey, serumMarket] = await setupSundialAndSerumMarket({
+    provider: solanaProvider,
+    sundialName,
+    sundialSDK,
+    mintPubkey: usdcMintPubkey,
+    oraclePubkey: usdcOraclePubKey,
     sundialMarket: sundialMarketBase.publicKey,
-    reserve: reserveInfo,
-    liquidityCap: new BN(MAX_U64.toString()),
+    reserveInfo,
+    serumMarketKp,
+    durationInSeconds: new anchor.BN(3 * MONTH_IN_SECS),
+    shouldPlaceOrder: false,
   });
   console.log(
     'sundialKeypair publicKey: ',
-    sundialKeypair.publicKey.toString(),
+    sundialKey.toString(),
+    serumMarket.toString(),
   );
-  await createTx.confirm();
 };
