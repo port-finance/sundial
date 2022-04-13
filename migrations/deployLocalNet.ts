@@ -26,19 +26,12 @@ import {
 import { MockOraclesWrapper } from '@port.finance/mock-oracles';
 import { Market } from '@project-serum/serum';
 import { Token, TOKEN_PROGRAM_ID } from '@solana/spl-token';
+import { BASE_MARKET_KEY } from './utils';
 
 const JSON_OUTPUT_FILE = 'env.localnet.json';
 const sundialName = 'USDCJune2022';
 const sundialName2 = 'USDCMay2022';
 const sundialCollateralName = 'SRM';
-
-// Public Key: `jDNZtiREbJdF3kzN7RZhgpgWUhCrCprBzZWtmYYa77w`
-const sundialMarket = [
-  173, 111, 205, 179, 204, 98, 130, 46, 108, 165, 157, 104, 105, 215, 157, 147,
-  181, 182, 179, 134, 117, 129, 157, 89, 120, 28, 205, 182, 4, 186, 54, 44, 10,
-  208, 98, 3, 240, 16, 194, 151, 51, 114, 43, 180, 124, 126, 163, 199, 188, 194,
-  235, 1, 213, 62, 121, 192, 171, 251, 118, 45, 207, 226, 206, 98,
-];
 
 // Public Key: `4vhDYDrMGHk6DVxe74sFR7RGeiJTUB9EeJx75Fco7wui`
 const serumMarketKey = [
@@ -86,7 +79,7 @@ export const deployLocalNet = async function (provider: anchor.Provider) {
   const sundialSDK = SundialSDK.load({
     provider: solanaProvider,
   });
-  const sundialMarketBase = Keypair.fromSecretKey(Buffer.from(sundialMarket));
+  const sundialMarketBase = Keypair.fromSecretKey(Buffer.from(BASE_MARKET_KEY));
   const createMarketTx = await sundialSDK.getCreateSundialMarketTx({
     sundialMarketBase,
     owner: provider.wallet.publicKey,

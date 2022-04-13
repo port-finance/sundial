@@ -8,10 +8,10 @@ import {
   ReserveParser,
 } from '@port.finance/port-sdk';
 import { setupSundialAndSerumMarket } from './deployLocalNet';
+import { ADMIN, BASE_MARKET_KEY } from './utils';
 
 const DAY_IN_SECS = 24 * 60 * 60;
 const MONTH_IN_SECS = 30 * DAY_IN_SECS;
-const ADMIN = new PublicKey('J97XsFfGVkyi1uwy1wBnpJT9mB2KRbF8PZqnd3RihTbr');
 
 export const deployMainnet = async function (provider) {
   anchor.setProvider(provider);
@@ -33,10 +33,10 @@ export const deployMainnet = async function (provider) {
   };
   const reserveInfo = ReserveParser(raw) as ParsedAccount<ReserveData>;
 
-  const sundialMarketBase = Keypair.generate();
   const serumMarketKp = Keypair.generate();
+  const sundialMarketKp = Keypair.fromSecretKey(Buffer.from(BASE_MARKET_KEY));
   const createMarketTx = await sundialSDK.getCreateSundialMarketTx({
-    sundialMarketBase,
+    sundialMarketBase: sundialMarketKp,
     owner: ADMIN,
     payer: provider.wallet.publicKey,
   });
@@ -54,7 +54,7 @@ export const deployMainnet = async function (provider) {
     sundialSDK,
     mintPubkey: usdcMintPubkey,
     oraclePubkey: usdcOraclePubKey,
-    sundialMarket: sundialMarketBase.publicKey,
+    sundialMarket: sundialMarketKp.publicKey,
     reserveInfo,
     serumMarketKp,
     durationInSeconds: new anchor.BN(3 * MONTH_IN_SECS),
