@@ -64,9 +64,6 @@ export const deployMainnet = async function (provider) {
     shouldPlaceOrder: false,
   });
 
-  console.log(
-    'Sundial Public Keys: ',
-    sundialKey.toString(),
-    serumMarket.toString(),
-  );
+  console.log('Sundial Key: ', sundialKey.toString());
+  console.log('Serum market: ', serumMarket.toString())
 };
