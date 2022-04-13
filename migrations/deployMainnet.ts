@@ -40,6 +40,8 @@ export const deployMainnet = async function (provider) {
     owner: ADMIN,
     payer: provider.wallet.publicKey,
   });
+
+  console.log('Creating Sundial Market...')
   await createMarketTx.confirm();
   const sundialName = 'USDC - July 2022';
   const usdcOraclePubKey = new PublicKey(
@@ -48,6 +50,7 @@ export const deployMainnet = async function (provider) {
   const usdcMintPubkey = new PublicKey(
     'EPjFWdd5AufqSSqeM2qN1xzybapC8G4wEGGkZwyTDt1v',
   );
+  console.log('Setting up Sundial and Serum market...')
   const [sundialKey, serumMarket] = await setupSundialAndSerumMarket({
     provider: solanaProvider,
     sundialName,
