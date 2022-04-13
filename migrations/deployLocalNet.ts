@@ -227,6 +227,7 @@ export const setupSundialAndSerumMarket = async ({
   reserveInfo,
   durationInSeconds = new anchor.BN(8640000), // 100 days
   shouldPlaceOrder = true,
+  liquidityCap = new BN(1_000_000_000_000),
 }: {
   provider: SolanaProvider;
   sundialName: string;
@@ -238,8 +239,8 @@ export const setupSundialAndSerumMarket = async ({
   reserveInfo: ParsedAccount<ReserveData>;
   durationInSeconds?: anchor.BN;
   shouldPlaceOrder?: boolean;
+  liquidityCap?: BN;
 }): Promise<[PublicKey, PublicKey]> => {
-  const liquidityCap = new BN(10_000_000_000);
   const createSundialTx = await sundialSDK.sundialWrapper.createSundial({
     sundialName,
     owner: provider.wallet.publicKey,
@@ -275,7 +276,7 @@ export const setupSundialAndSerumMarket = async ({
       mint: reserveInfo.data.liquidity.mintPubkey,
     });
     const depositTx = await sundialW.mintPrincipleAndYieldTokens({
-      amount: new BN(1000_000_000),
+      amount: new BN(1_000_000_000),
       reserve: reserveInfo,
       userLiquidityWallet,
     });
