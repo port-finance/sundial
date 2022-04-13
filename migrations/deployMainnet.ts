@@ -8,7 +8,7 @@ import {
   ReserveParser,
 } from '@port.finance/port-sdk';
 import { setupSundialAndSerumMarket } from './deployLocalNet';
-import { ADMIN, BASE_MARKET_KEY } from './utils';
+import { ADMIN, BASE_MARKET_KEY, PYTH_USDC_PRICE_ACCOUNT, USDC_MINT_PUB_KEY } from './utils';
 
 const DAY_IN_SECS = 24 * 60 * 60;
 const MONTH_IN_SECS = 30 * DAY_IN_SECS;
@@ -41,22 +41,16 @@ export const deployMainnet = async function (provider) {
     payer: provider.wallet.publicKey,
   });
 
-  console.log('Creating Sundial Market...')
+  console.log('Creating Sundial Market...');
   await createMarketTx.confirm();
   const sundialName = 'USDC - July 2022';
-  const usdcOraclePubKey = new PublicKey(
-    'Gnt27xtC473ZT2Mw5u8wZ68Z3gULkSTb5DuxJy7eJotD',
-  );
-  const usdcMintPubkey = new PublicKey(
-    'EPjFWdd5AufqSSqeM2qN1xzybapC8G4wEGGkZwyTDt1v',
-  );
-  console.log('Setting up Sundial and Serum market...')
+  console.log('Setting up Sundial and Serum market...');
   const [sundialKey, serumMarket] = await setupSundialAndSerumMarket({
     provider: solanaProvider,
     sundialName,
     sundialSDK,
-    mintPubkey: usdcMintPubkey,
-    oraclePubkey: usdcOraclePubKey,
+    mintPubkey: USDC_MINT_PUB_KEY,
+    oraclePubkey: PYTH_USDC_PRICE_ACCOUNT,
     sundialMarket: sundialMarketKp.publicKey,
     reserveInfo,
     serumMarketKp,
@@ -65,5 +59,5 @@ export const deployMainnet = async function (provider) {
   });
 
   console.log('Sundial Key: ', sundialKey.toString());
-  console.log('Serum market: ', serumMarket.toString())
+  console.log('Serum market: ', serumMarket.toString());
 };
