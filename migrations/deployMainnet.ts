@@ -8,7 +8,13 @@ import {
   ReserveParser,
 } from '@port.finance/port-sdk';
 import { setupSundialAndSerumMarket } from './deployLocalNet';
-import { ADMIN, BASE_MARKET_KEY, PYTH_USDC_PRICE_ACCOUNT, USDC_MINT_PUB_KEY } from './utils';
+import {
+  ADMIN,
+  BASE_MARKET_KEY,
+  PYTH_USDC_PRICE_ACCOUNT,
+  USDC_MINT_PUB_KEY,
+  USDC_RESERVE_PUB_KEY,
+} from './utils';
 
 const DAY_IN_SECS = 24 * 60 * 60;
 const MONTH_IN_SECS = 30 * DAY_IN_SECS;
@@ -24,12 +30,10 @@ export const deployMainnet = async function (provider) {
     provider: solanaProvider,
   });
 
-  const reservePubkey = new PublicKey(
-    'DcENuKuYd6BWGhKfGr7eARxodqG12Bz1sN5WA8NwvLRx',
-  );
+  console.log('Fetching Reserve Info...')
   const raw = {
-    pubkey: reservePubkey,
-    account: await provider.connection.getAccountInfo(reservePubkey),
+    pubkey: USDC_RESERVE_PUB_KEY,
+    account: await provider.connection.getAccountInfo(USDC_RESERVE_PUB_KEY),
   };
   const reserveInfo = ReserveParser(raw) as ParsedAccount<ReserveData>;
 
