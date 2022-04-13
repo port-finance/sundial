@@ -216,7 +216,7 @@ const createTokenAndMintToATA = async ({
   return [mintPubkey, address];
 };
 
-const setupSundialAndSerumMarket = async ({
+export const setupSundialAndSerumMarket = async ({
   provider,
   sundialName,
   serumMarketKp,
@@ -226,6 +226,7 @@ const setupSundialAndSerumMarket = async ({
   sundialMarket,
   reserveInfo,
   durationInSeconds = new anchor.BN(8640000), // 100 days
+  shouldPlaceOrder = true,
 }: {
   provider: SolanaProvider;
   sundialName: string;
@@ -236,6 +237,7 @@ const setupSundialAndSerumMarket = async ({
   sundialMarket: PublicKey;
   reserveInfo: ParsedAccount<ReserveData>;
   durationInSeconds?: anchor.BN;
+  shouldPlaceOrder?: boolean;
 }): Promise<[PublicKey, PublicKey]> => {
   const liquidityCap = new BN(10_000_000_000);
   const createSundialTx = await sundialSDK.sundialWrapper.createSundial({
@@ -267,29 +269,31 @@ const setupSundialAndSerumMarket = async ({
   sundialW.publicKey = sundialId;
   await sundialW.reloadData();
 
-  const { address: userLiquidityWallet } = await getOrCreateATA({
-    provider,
-    mint: reserveInfo.data.liquidity.mintPubkey,
-  });
-  const depositTx = await sundialW.mintPrincipleAndYieldTokens({
-    amount: new BN(1000_000_000),
-    reserve: reserveInfo,
-    userLiquidityWallet,
-  });
-  await depositTx.confirm();
+  if (shouldPlaceOrder) {
+    const { address: userLiquidityWallet } = await getOrCreateATA({
+      provider,
+      mint: reserveInfo.data.liquidity.mintPubkey,
+    });
+    const depositTx = await sundialW.mintPrincipleAndYieldTokens({
+      amount: new BN(1000_000_000),
+      reserve: reserveInfo,
+      userLiquidityWallet,
+    });
+    await depositTx.confirm();
 
-  const loadedSerumMarket = await Market.load(
-    provider.connection,
-    serumMarket,
-    {},
-    DEX_PID,
-  );
-  await placeOrders({
-    provider,
-    asks: [[1, 1000]],
-    bids: [[0.9, 1000]],
-    market: loadedSerumMarket,
-  });
+    const loadedSerumMarket = await Market.load(
+      provider.connection,
+      serumMarket,
+      {},
+      DEX_PID,
+    );
+    await placeOrders({
+      provider,
+      asks: [[1, 1000]],
+      bids: [[0.9, 1000]],
+      market: loadedSerumMarket,
+    });
+  }
 
   return [sundialId, serumMarket];
 };
