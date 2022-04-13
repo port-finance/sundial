@@ -243,6 +243,8 @@ export const setupSundialAndSerumMarket = async ({
     sundialMarket,
     reserve: reserveInfo,
     liquidityCap,
+    lendingFeeInBips: 10,
+    borrowingFeeInBips: 50,
   });
   await createSundialTx.confirm();
 

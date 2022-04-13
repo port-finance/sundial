@@ -60,6 +60,7 @@ export const deployMainnet = async function (provider) {
     durationInSeconds: new anchor.BN(3 * MONTH_IN_SECS),
     shouldPlaceOrder: false,
   });
+
   console.log(
     'sundialKeypair publicKey: ',
     sundialKey.toString(),
