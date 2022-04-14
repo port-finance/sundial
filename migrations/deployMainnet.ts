@@ -1,7 +1,7 @@
 import * as anchor from '@project-serum/anchor';
 import { SolanaProvider } from '@saberhq/solana-contrib';
 import { SundialSDK } from '../src';
-import { Keypair, PublicKey } from '@solana/web3.js';
+import { Keypair } from '@solana/web3.js';
 import {
   ParsedAccount,
   ReserveData,

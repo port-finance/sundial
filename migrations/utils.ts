@@ -16,6 +16,7 @@ export const USDC_RESERVE_PUB_KEY = new PublicKey(
   'DcENuKuYd6BWGhKfGr7eARxodqG12Bz1sN5WA8NwvLRx',
 );
 
+// SMBm3hxkRgw5acN7xjaLpRDeyfpxTToCWhbJTkmo94B
 export const BASE_MARKET_KEY = [
   210, 58, 193, 21, 65, 186, 153, 184, 85, 60, 89, 26, 250, 24, 88, 155, 22,
   224, 111, 203, 187, 41, 110, 34, 54, 76, 119, 86, 161, 164, 245, 162, 6, 126,
