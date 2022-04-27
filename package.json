@@ -7,7 +7,7 @@
   "license": "AGPL-3.0",
   "repository": "git@github.com:port-finance/sundial.git",
   "engines": {
-    "node": ">=15.0.0"
+    "node": ">=14.0.0"
   },
   "scripts": {
     "idl:generate": "./scripts/parse-idls.sh && ./scripts/generate-idl-types.sh",
