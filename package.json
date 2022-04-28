@@ -38,6 +38,7 @@
     "tiny-invariant": "^1.2.0"
   },
   "devDependencies": {
+    "@port.finance/port-sdk": "^0.2.66",
     "@port.finance/mock-oracles": "^0.0.5",
     "@project-serum/common": "^0.0.1-beta.3",
     "@saberhq/chai-solana": "^1.12.56",
@@ -63,7 +64,7 @@
   },
   "peerDependencies": {
     "@solana/spl-token-registry": "*",
-    "@port.finance/port-sdk": "^0.2.63"
+    "@port.finance/port-sdk": "^0.2.66"
   },
   "publishConfig": {
     "access": "public"
