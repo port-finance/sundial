@@ -74,3 +74,7 @@ jobs:
           yarn build
       - name: Run E2E Tests
         run: yarn test:e2e
+      - name: Run migration script
+        run: |
+          nohup anchor localnet
+          anchor migrate
