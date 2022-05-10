@@ -1,4 +1,4 @@
 import { deployLocalNet } from './deployLocalNet';
 import { deployMainnet } from './deployMainnet';
 
-module.exports = deployMainnet;
+module.exports = deployLocalNet;
