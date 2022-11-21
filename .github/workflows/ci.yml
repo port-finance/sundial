@@ -19,7 +19,7 @@ jobs:
           profile: minimal
           components: rustfmt, clippy
       - name: Cache dependencies
-        uses: Swatinem/rust-cache@v1
+        uses: Swatinem/rust-cache@v2
       - name: Formatting and Linting
         run: | 
           cargo fmt -- --check
@@ -56,7 +56,7 @@ jobs:
         with:
           components: rustfmt, clippy
       - name: Cache Rust dependencies
-        uses: Swatinem/rust-cache@v1
+        uses: Swatinem/rust-cache@v2
       - name: Generate keypair
         run: solana-keygen new --no-bip39-passphrase
       - name: Install Anchor

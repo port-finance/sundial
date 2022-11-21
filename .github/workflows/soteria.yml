@@ -29,7 +29,7 @@ jobs:
           key: solana-${{ env.SOLANA_VERSION }}
 
       - name: Cache build dependencies
-        uses: Swatinem/rust-cache@v1
+        uses: Swatinem/rust-cache@v2
         with:
           target-dir: .coderrect/build
 
